@@ -1,0 +1,14 @@
+{
+  "name": "rg-ambiental-super-app",
+  "private": true,
+  "workspaces": [
+    "mobile",
+    "packages/shared",
+    "apps/admin"
+  ],
+  "scripts": {
+    "mobile": "npm run start --workspace=mobile",
+    "admin": "npm run dev --workspace=admin",
+    "test:geo": "npm run test --workspace=mobile"
+  }
+}

@@ -1,0 +1,142 @@
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f2f8f4;
+  min-height: 100vh;
+  color: #13261c;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: #008d4c;
+}
+
+.sub {
+  color: #4b5563;
+  margin-top: 8px;
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.kpiCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.kpiLabel {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.kpiValue {
+  font-size: 22px;
+  font-weight: 900;
+  margin-top: 8px;
+  color: #008d4c;
+}
+
+.heatmapSection {
+  margin: 8px 0 24px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #dfe8e2;
+  border-radius: 18px;
+}
+
+.heatmapTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #13261c;
+}
+
+.heatmapSub {
+  margin: 8px 0 14px;
+  font-size: 13px;
+  color: #4a5f54;
+  line-height: 1.45;
+}
+
+.heatmapGrid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+}
+
+@media (max-width: 700px) {
+  .heatmapGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.heatmapCell {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #8dc63f, #008d4c);
+}
+
+.mapSection {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .mapSection {
+    grid-template-columns: 1fr;
+  }
+}
+
+.map {
+  height: 420px;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.list {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.list h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li {
+  padding: 12px 0 12px 12px;
+  border-left: 4px solid #ccc;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list li span {
+  font-size: 13px;
+  color: #6b7280;
+}

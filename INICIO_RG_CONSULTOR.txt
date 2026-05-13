@@ -1,0 +1,30 @@
+================================================================================
+  RG CONSULTOR — USE ESTA PASTA (cópia permanente do projeto)
+================================================================================
+
+Por que estava "sem atualização"?
+  O Cursor guardava o código em AppData\Local\Temp\... Você provavelmente
+  rodava o Expo em OUTRA pasta. Aqui está tudo unificado em:
+    C:\Users\Rafae\RGConsultor
+
+O que fazer AGORA:
+
+1) No Cursor: File > Open Folder e abra:
+     C:\Users\Rafae\RGConsultor
+
+2) No PowerShell:
+     cd C:\Users\Rafae\RGConsultor\mobile
+     npx expo start --clear
+
+3) No celular (Expo Go): escaneie o QR de novo ou "Reload".
+
+Conteúdo já incluído nesta cópia:
+  - Nome do app: RG Consultor (app.json)
+  - Gamificação (missões, XP, moedas, loja, ranking)
+  - Login master@ ou admin@ → painel master
+  - Showroom com vídeo MP4 estável + HLS opcional
+  - Logo hero no login, Mission Center, Loja em Mais
+
+Instalação no aparelho (build): veja mobile\docs\INSTALAR_NO_CELULAR.md
+
+================================================================================
