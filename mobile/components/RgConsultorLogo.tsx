@@ -28,7 +28,8 @@ export function RgConsultorLogo({ subtitle = 'Campo comercial inteligente', vari
     return (
       <View style={styles.homeWrap} accessibilityRole="header" accessibilityLabel="RG Consultor">
         <View style={[styles.homeMono, { width: box, height: box, borderRadius: 22 }]}>
-          <Svg width={box} height={box} style={styles.svgFill}>
+          <View style={styles.svgFill}>
+            <Svg width={box} height={box}>
             <Defs>
               <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0" stopColor={p.tint} />
@@ -39,6 +40,7 @@ export function RgConsultorLogo({ subtitle = 'Campo comercial inteligente', vari
             <Rect x={0} y={0} width={box} height={box} rx={20} fill={`url(#${gradId})`} />
             <Circle cx={box * 0.78} cy={box * 0.22} r={box * 0.08} fill="rgba(255,255,255,0.22)" />
           </Svg>
+          </View>
           <View style={styles.monoCenter} pointerEvents="none">
             <Text style={[styles.monoLetters, { fontSize: rgMonoSize }]}>RG</Text>
           </View>
@@ -62,7 +64,8 @@ export function RgConsultorLogo({ subtitle = 'Campo comercial inteligente', vari
     <View style={styles.wrap} accessibilityRole="header" accessibilityLabel="RG Consultor">
       <View style={[styles.row, { gap: hero ? space.lg : space.md }]}>
         <View style={[styles.monoOuter, { width: box, height: box, borderRadius: hero ? 20 : 16 }]}>
-          <Svg width={box} height={box} style={styles.svgFill}>
+          <View style={styles.svgFill}>
+            <Svg width={box} height={box}>
             <Defs>
               <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0" stopColor={p.tint} />
@@ -71,6 +74,7 @@ export function RgConsultorLogo({ subtitle = 'Campo comercial inteligente', vari
             </Defs>
             <Rect x={0} y={0} width={box} height={box} rx={hero ? 18 : 14} fill={`url(#${gradId})`} />
           </Svg>
+          </View>
           <View style={styles.monoCenter} pointerEvents="none">
             <Text style={[styles.monoLetters, { fontSize: rgMonoSize }]}>RG</Text>
           </View>

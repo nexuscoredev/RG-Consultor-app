@@ -66,6 +66,8 @@
       },
       "authMode": "mock",
       "authApiBaseUrl": "",
+      "apiMode": "mock",
+      "apiBaseUrl": "",
       "environment": "development",
       "showDemoAuth": true
     },

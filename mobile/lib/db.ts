@@ -1,13 +1,11 @@
-import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
+import type * as SQLite from 'expo-sqlite';
 
 import { runSqliteMigrations } from '@/lib/migrations';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-export function getDb(): SQLite.SQLiteDatabase {
-  if (!db) {
-    db = SQLite.openDatabaseSync('rg_ambiental.db');
-    db.execSync(`
+const INIT_SQL = `
       CREATE TABLE IF NOT EXISTS outbox (
         id TEXT PRIMARY KEY NOT NULL,
         type TEXT NOT NULL,
@@ -52,7 +50,18 @@ export function getDb(): SQLite.SQLiteDatabase {
         coins_spent INTEGER NOT NULL,
         created_at INTEGER NOT NULL
       );
-    `);
+    `;
+
+export function getDb(): SQLite.SQLiteDatabase {
+  if (!db) {
+    if (Platform.OS === 'web') {
+      const { getWebMemoryDb } = require('./webMemoryDb') as typeof import('./webMemoryDb');
+      db = getWebMemoryDb();
+    } else {
+      const SQLiteMod = require('expo-sqlite') as typeof import('expo-sqlite');
+      db = SQLiteMod.openDatabaseSync('rg_ambiental.db');
+      db.execSync(INIT_SQL);
+    }
     runSqliteMigrations(db);
   }
   return db;

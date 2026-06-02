@@ -13,6 +13,8 @@ const ink = '#111827';
 /** Texto secundário / apoio — alinhado a slate corporativo */
 const inkMuted = '#6b7280';
 const danger = '#dc2626';
+/** WhatsApp brand — botões de contacto */
+const whatsapp = '#25D366';
 /** Elite / pódio / detalhes de topo — usar com parcimônia */
 const goldMatte = '#b89a6a';
 
@@ -35,6 +37,7 @@ export default {
     tabIconSelected: forestDeep,
     accentMuted: lime,
     danger,
+    whatsapp,
   },
   dark: {
     text: '#f4faf7',
@@ -50,5 +53,6 @@ export default {
     tabIconSelected: lime,
     accentMuted: forest,
     danger,
+    whatsapp,
   },
 };

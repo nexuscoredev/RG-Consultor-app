@@ -5,8 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 import type { ThemePreference } from '@/context/PrefsContext';
 import { usePrefs } from '@/context/PrefsContext';
 import { useSync } from '@/context/SyncContext';
-import { tabBarFloatingClearance } from '@/constants/layout';
+import { radius, screenScroll, space, tabBarFloatingClearance } from '@/constants/layout';
 import { countFailedOutbox, countPendingOutbox, listOutboxForUi } from '@/lib/outbox';
+import { apiHealthCheck } from '@/lib/apiClient';
+import { getApiBaseUrl, getApiMode, isApiEnabled } from '@/lib/apiConfig';
 import { t } from '@/lib/i18n';
 import { checkOtaUpdateAvailable, fetchOtaAndReload, isOtaRuntimeSupported } from '@/lib/otaUpdates';
 import { useRouter } from 'expo-router';
@@ -28,6 +30,7 @@ export default function SettingsScreen() {
   const [failed, setFailed] = useState(0);
   const [tail, setTail] = useState('');
   const [otaBusy, setOtaBusy] = useState(false);
+  const [apiOk, setApiOk] = useState<boolean | null>(null);
 
   const refresh = useCallback(() => {
     setPending(countPendingOutbox());
@@ -37,6 +40,11 @@ export default function SettingsScreen() {
         .map((r) => `${r.type} ${r.status}`)
         .join(' · '),
     );
+    if (isApiEnabled()) {
+      void apiHealthCheck().then(setApiOk);
+    } else {
+      setApiOk(null);
+    }
   }, []);
 
   const testBiometric = useCallback(async () => {
@@ -120,7 +128,11 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: bottomPad }]}
+      contentContainerStyle={[
+        styles.root,
+        screenScroll,
+        { backgroundColor: p.background, paddingBottom: bottomPad },
+      ]}
       onLayout={refresh}>
       {profile ? (
         <View style={[styles.profileCard, { borderColor: p.border, backgroundColor: p.card }]}>
@@ -176,6 +188,17 @@ export default function SettingsScreen() {
       </Pressable>
 
       <Text style={[styles.h, { color: p.text, marginTop: 24 }]}>{s.syncTitle}</Text>
+      <View style={[styles.infoCard, { borderColor: p.border, backgroundColor: p.card, marginBottom: 10 }]}>
+        <Text style={[styles.h, { color: p.text }]}>{s.apiTitle}</Text>
+        <Text style={[styles.p, { color: p.textSecondary }]}>
+          {s.apiModeLabel}: {getApiMode()} · {s.apiUrlLabel}: {getApiBaseUrl() || '—'}
+        </Text>
+        {isApiEnabled() ? (
+          <Text style={[styles.p, { color: apiOk ? p.tint : p.danger }]}>
+            {apiOk ? s.apiOnline : s.apiOffline}
+          </Text>
+        ) : null}
+      </View>
       <Text style={[styles.p, { color: p.textSecondary }]}>
         {s.syncQueue.replace('{pending}', String(pending)).replace('{failed}', String(failed)).replace('{status}', status)}
       </Text>
@@ -223,9 +246,9 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { padding: 20, gap: 10, paddingTop: 12 },
-  infoCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 8, marginTop: 4 },
-  profileCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 6, marginBottom: 8 },
+  root: { gap: space.sm },
+  infoCard: { borderRadius: radius.md, borderWidth: 1, padding: space.md, gap: space.sm, marginTop: space.xs },
+  profileCard: { borderRadius: radius.md, borderWidth: 1, padding: space.md, gap: space.xs, marginBottom: space.sm },
   h: { fontSize: 18, fontWeight: '900' },
   p: { fontSize: 14, lineHeight: 20 },
   mono: { fontSize: 11 },

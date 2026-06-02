@@ -17,27 +17,35 @@ export function HomeHeroGlass({ dateLabel }: Props) {
   const p = Colors[scheme];
   const isDark = scheme === 'dark';
 
+  const glassFill =
+    Platform.OS === 'android'
+      ? isDark
+        ? 'rgba(36,48,40,0.85)'
+        : 'rgba(255,255,255,0.78)'
+      : Platform.OS === 'web'
+        ? isDark
+          ? 'rgba(24,36,30,0.88)'
+          : 'rgba(255,255,255,0.82)'
+        : isDark
+          ? 'rgba(0,0,0,0.12)'
+          : 'rgba(255,255,255,0.25)';
+
   return (
     <View style={[styles.wrap, { borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(17,24,39,0.06)' }]}>
-      <BlurView
-        intensity={isDark ? 28 : 36}
-        tint={isDark ? 'dark' : 'light'}
-        style={[StyleSheet.absoluteFill, styles.blur]}
-      />
+      {Platform.OS === 'web' ? null : (
+        <BlurView
+          intensity={isDark ? 28 : 36}
+          tint={isDark ? 'dark' : 'light'}
+          style={[StyleSheet.absoluteFill, styles.blur]}
+        />
+      )}
       <View
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFillObject,
           styles.blur,
           {
-            backgroundColor:
-              Platform.OS === 'android'
-                ? isDark
-                  ? 'rgba(36,48,40,0.85)'
-                  : 'rgba(255,255,255,0.78)'
-                : isDark
-                  ? 'rgba(0,0,0,0.12)'
-                  : 'rgba(255,255,255,0.25)',
+            backgroundColor: glassFill,
           },
         ]}
       />

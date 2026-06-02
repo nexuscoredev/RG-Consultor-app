@@ -36,6 +36,21 @@ const config: ExpoConfig = {
     ...base.extra,
     mapsAndroidEnabled: Boolean(androidMapsKey),
     mapsIosEnabled: Boolean(iosMapsKey),
+    apiMode:
+      process.env.EXPO_PUBLIC_API_MODE === 'api'
+        ? 'api'
+        : process.env.EXPO_PUBLIC_API_MODE === 'mock'
+          ? 'mock'
+          : base.extra?.apiMode,
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? base.extra?.apiBaseUrl ?? '',
+    authMode:
+      process.env.EXPO_PUBLIC_AUTH_MODE === 'api'
+        ? 'api'
+        : process.env.EXPO_PUBLIC_AUTH_MODE === 'mock'
+          ? 'mock'
+          : base.extra?.authMode,
+    authApiBaseUrl:
+      process.env.EXPO_PUBLIC_API_BASE_URL ?? base.extra?.authApiBaseUrl ?? base.extra?.apiBaseUrl ?? '',
   },
 };
 

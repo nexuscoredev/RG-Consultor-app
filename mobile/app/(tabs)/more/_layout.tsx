@@ -13,15 +13,17 @@ export default function MoreStackLayout() {
         headerTitleStyle: { color: p.text, fontWeight: '800' },
       }}>
       <Stack.Screen name="index" options={{ title: 'Mais' }} />
-      <Stack.Screen name="pipeline" options={{ title: 'Pipeline' }} />
       <Stack.Screen name="missions" options={{ title: 'Mission Center' }} />
       <Stack.Screen name="store" options={{ title: 'Loja de prêmios' }} />
       <Stack.Screen name="operation" options={{ title: 'Nossa Operação', headerShown: false }} />
-      <Stack.Screen name="contract-flow" options={{ title: 'Novo contrato' }} />
       <Stack.Screen name="documents" options={{ title: 'Trilha documental' }} />
       <Stack.Screen name="alerts" options={{ title: 'Alertas gestão' }} />
       <Stack.Screen name="legal" options={{ title: 'Privacidade e retenção' }} />
       <Stack.Screen name="settings" options={{ title: 'Configurações' }} />
+      <Stack.Screen name="commercial" options={{ headerShown: false }} />
+      <Stack.Screen name="proposal" options={{ headerShown: false }} />
+      <Stack.Screen name="pipeline" options={{ headerShown: false }} />
+      <Stack.Screen name="contract-flow" options={{ headerShown: false }} />
     </Stack>
   );
 }

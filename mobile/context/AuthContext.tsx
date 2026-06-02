@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
-import { authApiSignIn } from '@/lib/authApi';
+import { authApiMe, authApiSignIn, type AuthUserProfile } from '@/lib/authApi';
+import { isAuthApiEnabled } from '@/lib/apiConfig';
+import { setApiTokenProvider } from '@/lib/api';
+import { setOutboxTokenProvider } from '@/lib/outbox';
+import { authTokenDelete, authTokenGet, authTokenSet } from '@/lib/authTokenStorage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const TOKEN_KEY = 'rg_auth_token';
@@ -46,6 +49,16 @@ function displayFromEmail(email: string): string {
   return local.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function profileFromApiUser(u: AuthUserProfile): UserProfile {
+  return {
+    email: u.email,
+    role: u.role,
+    displayName: u.displayName,
+    region: u.region,
+    sellerId: u.sellerId,
+  };
+}
+
 /** Recupera perfil a partir do JWT demo legado (`demo.<email-encoded>.<ts>`). */
 function profileFromToken(token: string): UserProfile | null {
   const parts = token.split('.');
@@ -67,6 +80,26 @@ function profileFromToken(token: string): UserProfile | null {
   }
 }
 
+async function resolveProfile(token: string, fallbackEmail?: string): Promise<UserProfile | null> {
+  if (isAuthApiEnabled()) {
+    const fromApi = await authApiMe(token);
+    if (fromApi) return profileFromApiUser(fromApi);
+  }
+  const fromDemo = profileFromToken(token);
+  if (fromDemo) return fromDemo;
+  if (fallbackEmail) {
+    const role = inferRole(fallbackEmail);
+    return {
+      email: fallbackEmail,
+      role,
+      displayName: displayFromEmail(fallbackEmail),
+      region: role === 'master' ? 'Brasil' : 'SP — Capital',
+      sellerId: role === 'master' ? 'master-1' : `seller-${encodeURIComponent(fallbackEmail).slice(0, 24)}`,
+    };
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -74,11 +107,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [consent, setConsent] = useState<ConsentSnapshot | null>(null);
 
   useEffect(() => {
+    setApiTokenProvider(() => token);
+    setOutboxTokenProvider(() => token);
+  }, [token]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const [t, c, p] = await Promise.all([
-          SecureStore.getItemAsync(TOKEN_KEY),
+          authTokenGet(TOKEN_KEY),
           AsyncStorage.getItem(CONSENT_KEY),
           AsyncStorage.getItem(PROFILE_KEY),
         ]);
@@ -86,9 +124,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(t);
         setConsent(c ? (JSON.parse(c) as ConsentSnapshot) : null);
         let prof = p ? (JSON.parse(p) as UserProfile) : null;
-        if (t && !prof) {
-          prof = profileFromToken(t);
-          if (prof) await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(prof));
+        if (t) {
+          const resolved = await resolveProfile(t, prof?.email);
+          if (resolved) {
+            prof = resolved;
+            await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(prof));
+          }
         }
         setProfile(prof);
       } finally {
@@ -102,22 +143,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { accessToken, email: resolvedEmail } = await authApiSignIn(email, password);
-    const role = inferRole(resolvedEmail);
-    const prof: UserProfile = {
+    const prof = (await resolveProfile(accessToken, resolvedEmail)) ?? {
       email: resolvedEmail,
-      role,
+      role: inferRole(resolvedEmail),
       displayName: displayFromEmail(resolvedEmail),
-      region: role === 'master' ? 'Brasil' : 'SP — Capital',
-      sellerId: role === 'master' ? 'master-1' : `seller-${encodeURIComponent(resolvedEmail).slice(0, 24)}`,
+      region: inferRole(resolvedEmail) === 'master' ? 'Brasil' : 'SP — Capital',
+      sellerId:
+        inferRole(resolvedEmail) === 'master'
+          ? 'master-1'
+          : `seller-${encodeURIComponent(resolvedEmail).slice(0, 24)}`,
     };
-    await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+    await authTokenSet(TOKEN_KEY, accessToken);
     await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(prof));
     setToken(accessToken);
     setProfile(prof);
   }, []);
 
   const signOut = useCallback(async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await authTokenDelete(TOKEN_KEY);
     await AsyncStorage.removeItem(PROFILE_KEY);
     setToken(null);
     setProfile(null);

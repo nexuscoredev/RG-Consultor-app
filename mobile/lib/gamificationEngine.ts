@@ -250,7 +250,8 @@ export function loadRedemptions(): Redemption[] {
   const db = getDb();
   return db
     .getAllSync<{ id: string; title: string; coins_spent: number; created_at: number }>(
-      `SELECT id, title, coins_spent, created_at FROM store_redemptions ORDER BY created_at DESC LIMIT 30`,
+      `SELECT id, title, coins_spent, created_at FROM store_redemptions ORDER BY created_at DESC LIMIT ?`,
+      30,
     )
     .map((r) => ({ id: r.id, title: r.title, coins: r.coins_spent, at: r.created_at }));
 }

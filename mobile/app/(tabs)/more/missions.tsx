@@ -5,6 +5,7 @@ import { XpProgressRing } from '@/components/gamification/XpProgressRing';
 import { HapticPressable } from '@/components/ui/HapticPressable';
 import { Surface } from '@/components/ui/Surface';
 import { useGamification } from '@/context/GamificationContext';
+import { isDemoToolsEnabled } from '@/lib/demoTools';
 import { usePrefs } from '@/context/PrefsContext';
 import {
   leaderboardFor,
@@ -112,6 +113,7 @@ export default function MissionsScreen() {
   const insets = useSafeAreaInsets();
   const scrollBottom = tabBarFloatingClearance(insets.bottom);
   const { wallet, missions, demoAdvance } = useGamification();
+  const showDemoAdvance = isDemoToolsEnabled();
   const { prefs } = usePrefs();
   const [boardScope, setBoardScope] = useState<BoardScope>('perfil');
 
@@ -190,14 +192,14 @@ export default function MissionsScreen() {
                 <View style={[styles.doneBadge, { borderColor: p.lime, backgroundColor: `${p.lime}14` }]}>
                   <Text style={[styles.doneBadgeText, { color: p.tint }]}>Concluída</Text>
                 </View>
-              ) : (
+              ) : showDemoAdvance ? (
                 <HapticPressable
                   onPress={() => demoAdvance(def.id, 1)}
                   style={[styles.demoBtn, { borderColor: p.border, backgroundColor: p.background }]}
                   accessibilityLabel={`Simular progresso na missão ${def.title}`}>
                   <Text style={[styles.demoBtnText, { color: p.textSecondary }]}>+1 demo</Text>
                 </HapticPressable>
-              )}
+              ) : null}
             </View>
             <Text style={[styles.title, { color: p.text }]}>{def.title}</Text>
             <Text style={[styles.desc, { color: p.textSecondary }]}>{def.description}</Text>

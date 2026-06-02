@@ -4,11 +4,13 @@
   "workspaces": [
     "mobile",
     "packages/shared",
-    "apps/admin"
+    "apps/admin",
+    "apps/api"
   ],
   "scripts": {
     "mobile": "npm run start --workspace=mobile",
     "admin": "npm run dev --workspace=admin",
+    "api": "npm run dev --workspace=@rg-ambiental/api",
     "test:geo": "npm run test --workspace=mobile"
   }
 }

@@ -91,8 +91,22 @@ export function todayIsoDate(): string {
   return toIsoDateLocal(new Date());
 }
 
+/** Soma dias a uma data `yyyy-mm-dd` no calendário local (sem UTC shift). */
+export function addDaysIso(isoDate: string, deltaDays: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  return toIsoDateLocal(dt);
+}
+
 export function getDefaultRouteToday(): RotaDia {
   return routeForDate(todayIsoDate());
+}
+
+/** Próximos 7 dias a partir de hoje (hoje + 6) — chips da agenda e “Amanhã” na home. */
+export function buildForwardWeekDates(): string[] {
+  const t = todayIsoDate();
+  return Array.from({ length: 7 }, (_, i) => addDaysIso(t, i));
 }
 
 /** Rotas para API mock (janela de 7 dias centrada em hoje) */

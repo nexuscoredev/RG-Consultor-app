@@ -1,5 +1,8 @@
 import type { RotaDia } from '@rg-ambiental/shared';
 
+import { apiFetch } from '@/lib/apiClient';
+import { isApiEnabled } from '@/lib/apiConfig';
+
 export type PipelineRow = {
   account: string;
   stage: string;
@@ -8,8 +11,35 @@ export type PipelineRow = {
   docPending?: string;
 };
 
-/** Simula GET /me/routes/:date — em produção usar fetch com Bearer */
-export async function fetchRouteDay(date: string): Promise<RotaDia> {
+export type MasterDashboardData = {
+  kpis: { visitsWeek: number; contractsMonth: number; avgXp: number };
+  team: {
+    id: string;
+    name: string;
+    profile: string;
+    region: string;
+    status: 'em_visita' | 'em_rota' | 'sync_ok' | 'offline';
+    xp: number;
+    coins: number;
+    visitsWeek: number;
+    proposalsWeek: number;
+    contractsMonth: number;
+    lastSyncLabel: string;
+  }[];
+  pipelineOpen: number;
+};
+
+let tokenProvider: (() => string | null) | null = null;
+
+export function setApiTokenProvider(fn: () => string | null): void {
+  tokenProvider = fn;
+}
+
+function token(): string | null {
+  return tokenProvider?.() ?? null;
+}
+
+async function fetchRouteDayMock(date: string): Promise<RotaDia> {
   const { buildMockWeekRoutes, routeForDate } = await import('@/lib/mockData');
   const routes = buildMockWeekRoutes();
   const hit = routes.find((r) => r.date === date);
@@ -17,8 +47,7 @@ export async function fetchRouteDay(date: string): Promise<RotaDia> {
   return hit ?? routeForDate(date);
 }
 
-/** Simula CRM / pipeline */
-export async function fetchPipeline(): Promise<PipelineRow[]> {
+async function fetchPipelineMock(): Promise<PipelineRow[]> {
   await new Promise((r) => setTimeout(r, 80));
   return [
     {
@@ -42,4 +71,19 @@ export async function fetchPipeline(): Promise<PipelineRow[]> {
       value: 'Contrato ativo',
     },
   ];
+}
+
+export async function fetchRouteDay(date: string): Promise<RotaDia> {
+  if (!isApiEnabled()) return fetchRouteDayMock(date);
+  return apiFetch<RotaDia>(`/me/routes/${date}`, { token: token() });
+}
+
+export async function fetchPipeline(): Promise<PipelineRow[]> {
+  if (!isApiEnabled()) return fetchPipelineMock();
+  const data = await apiFetch<{ rows: PipelineRow[] }>('/me/pipeline', { token: token() });
+  return data.rows;
+}
+
+export async function fetchMasterDashboard(): Promise<MasterDashboardData> {
+  return apiFetch<MasterDashboardData>('/master/dashboard', { token: token() });
 }

@@ -39,3 +39,6 @@ mobile/android/
 
 # Kotlin
 .kotlin/
+
+# API demo persistence (local dev)
+apps/api/data/

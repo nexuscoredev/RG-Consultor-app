@@ -1,5 +1,5 @@
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
 import { Link, Tabs, type Href } from 'expo-router';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -8,19 +8,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { iconSize } from '@/constants/icons';
+import { typography } from '@/constants/typography';
+
+type TabIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 function TabBarIcon({
   name,
   color,
   focused,
 }: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
+  name: TabIconName;
   color: string;
   focused: boolean;
 }) {
   return (
-    <View style={[styles.iconWrap, focused && styles.iconWrapFocused]}>
-      <FontAwesome size={focused ? 23 : 21} style={{ marginBottom: -2 }} name={name} color={color} />
+    <View style={focused ? [styles.iconWrap, styles.iconWrapFocused] : styles.iconWrap}>
+      <MaterialCommunityIcons
+        size={focused ? iconSize.lg + 1 : iconSize.lg - 1}
+        style={{ marginBottom: -2 }}
+        name={name}
+        color={color}
+      />
     </View>
   );
 }
@@ -37,7 +46,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: p.tabIconSelected,
         tabBarInactiveTintColor: p.tabIconDefault,
         tabBarShowLabel: true,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarLabelStyle: typography.tabLabel,
         tabBarItemStyle: styles.tabItem,
         tabBarStyle: {
           position: 'absolute',
@@ -58,13 +67,21 @@ export default function TabLayout() {
           overflow: 'hidden',
           paddingHorizontal: 6,
         },
-        tabBarBackground: () => (
-          <BlurView
-            intensity={scheme === 'dark' ? 42 : 56}
-            tint={scheme === 'dark' ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        ),
+        tabBarBackground: () =>
+          Platform.OS === 'web' ? (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: scheme === 'dark' ? `${p.card}f0` : `${p.card}ee` },
+              ]}
+            />
+          ) : (
+            <BlurView
+              intensity={scheme === 'dark' ? 42 : 56}
+              tint={scheme === 'dark' ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
         headerShown: useClientOnlyValue(false, true),
         headerStyle: { backgroundColor: p.background },
         headerTintColor: p.tint,
@@ -74,14 +91,16 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Início',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} />
+          ),
           headerRight: () => (
             <Link href={'/(tabs)/more/settings' as Href} asChild>
               <Pressable style={{ marginRight: 16 }} accessibilityRole="button" accessibilityLabel="Configurações">
                 {({ pressed }) => (
-                  <FontAwesome
-                    name="cog"
-                    size={22}
+                  <MaterialCommunityIcons
+                    name="cog-outline"
+                    size={iconSize.lg}
                     color={p.text}
                     style={{ opacity: pressed ? 0.5 : 1 }}
                   />
@@ -95,7 +114,19 @@ export default function TabLayout() {
         name="agenda"
         options={{
           title: 'Agenda',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="calendar" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'calendar-month' : 'calendar-month-outline'} color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="commercial"
+        options={{
+          title: 'Comercial',
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'briefcase' : 'briefcase-outline'} color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -103,7 +134,9 @@ export default function TabLayout() {
         options={{
           title: 'Mais',
           headerShown: false,
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="ellipsis-h" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="dots-horizontal" color={color} focused={focused} />
+          ),
         }}
       />
     </Tabs>
@@ -111,7 +144,6 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.2, marginBottom: 4 },
   tabItem: { paddingTop: 6 },
   iconWrap: {
     alignItems: 'center',

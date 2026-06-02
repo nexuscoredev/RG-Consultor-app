@@ -1,5 +1,7 @@
 import type { CheckInPayload } from '@rg-ambiental/shared';
 import { getDb } from '@/lib/db';
+import { apiFetch } from '@/lib/apiClient';
+import { isApiEnabled } from '@/lib/apiConfig';
 
 export type OutboxRow = {
   id: string;
@@ -13,34 +15,64 @@ export type OutboxRow = {
   next_attempt_at?: number;
 };
 
+let tokenProvider: (() => string | null) | null = null;
+
+export function setOutboxTokenProvider(fn: () => string | null): void {
+  tokenProvider = fn;
+}
+
 function newId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
-export function enqueueCheckIn(payload: CheckInPayload): string {
+function insertOutbox(type: string, payload: unknown): string {
   const id = newId();
   const database = getDb();
   database.runSync(
     `INSERT INTO outbox (id, type, payload, created_at, status) VALUES (?, ?, ?, ?, 'pending')`,
     id,
-    'CHECK_IN',
+    type,
     JSON.stringify(payload),
     Date.now(),
   );
   return id;
 }
 
+export function enqueueCheckIn(payload: CheckInPayload): string {
+  return insertOutbox('CHECK_IN', payload);
+}
+
 export function enqueueCheckOut(payload: CheckInPayload): string {
-  const id = newId();
-  const database = getDb();
-  database.runSync(
-    `INSERT INTO outbox (id, type, payload, created_at, status) VALUES (?, ?, ?, ?, 'pending')`,
-    id,
-    'CHECK_OUT',
-    JSON.stringify(payload),
-    Date.now(),
-  );
-  return id;
+  return insertOutbox('CHECK_OUT', payload);
+}
+
+export function enqueueMeetingLog(payload: {
+  client: string;
+  notes: string;
+  nextAction: string;
+  nextDate: string;
+}): string {
+  return insertOutbox('MEETING_LOG', payload);
+}
+
+export function enqueueProposalSent(payload: {
+  company: string;
+  clientName: string;
+  value: string;
+  proposalNumber: string;
+  scope?: string;
+}): string {
+  return insertOutbox('PROPOSAL_SENT', payload);
+}
+
+export function enqueueContractClosed(payload: {
+  company: string;
+  cnpj: string;
+  service: string;
+  value: string;
+  term: string;
+}): string {
+  return insertOutbox('CONTRACT_CLOSED', payload);
 }
 
 export function countPendingOutbox(): number {
@@ -82,8 +114,47 @@ function backoffMs(retries: number): number {
   return Math.min(cap, base * Math.pow(2, Math.max(0, retries)));
 }
 
-/** Process pending rows (mock API). Continua após falhas; backoff exponencial até max retries. */
-export function processOutboxSync(): { synced: number; error?: string } {
+async function syncRowToApi(row: OutboxRow, authToken: string): Promise<void> {
+  const payload = JSON.parse(row.payload) as unknown;
+  await apiFetch<{ accepted: string[] }>('/sync/events', {
+    method: 'POST',
+    token: authToken,
+    body: {
+      events: [{ id: row.id, type: row.type, payload, createdAt: row.created_at }],
+    },
+  });
+}
+
+function markSynced(database: ReturnType<typeof getDb>, id: string): void {
+  database.runSync(
+    `UPDATE outbox SET status = 'synced', last_error = NULL, next_attempt_at = 0 WHERE id = ?`,
+    id,
+  );
+}
+
+function markFailed(database: ReturnType<typeof getDb>, row: OutboxRow, msg: string): void {
+  const nextRetries = row.retries + 1;
+  const nextAt = Date.now() + backoffMs(row.retries);
+  if (nextRetries >= MAX_SYNC_RETRIES) {
+    database.runSync(
+      `UPDATE outbox SET status = 'failed', retries = ?, last_error = ?, next_attempt_at = 0 WHERE id = ?`,
+      nextRetries,
+      msg,
+      row.id,
+    );
+  } else {
+    database.runSync(
+      `UPDATE outbox SET retries = ?, last_error = ?, next_attempt_at = ? WHERE id = ?`,
+      nextRetries,
+      msg,
+      nextAt,
+      row.id,
+    );
+  }
+}
+
+/** Process pending rows — API real ou simulação local. */
+export async function processOutboxSync(): Promise<{ synced: number; error?: string }> {
   const database = getDb();
   const now = Date.now();
   const rows = database.getAllSync<OutboxRow>(
@@ -93,42 +164,28 @@ export function processOutboxSync(): { synced: number; error?: string } {
      ORDER BY created_at ASC LIMIT 25`,
     now,
   );
+
+  const authToken = tokenProvider?.() ?? null;
+  const useApi = isApiEnabled() && authToken;
+
   let synced = 0;
   let lastErr: string | undefined;
+
   for (const row of rows) {
     try {
-      // Substituir por fetch real ao backend NestJS
-      const ok = Math.random() > 0.03;
-      if (!ok) {
-        throw new Error('Erro simulado de rede');
+      if (useApi) {
+        await syncRowToApi(row, authToken);
+      } else {
+        await new Promise((r) => setTimeout(r, 25));
       }
-      database.runSync(
-        `UPDATE outbox SET status = 'synced', last_error = NULL, next_attempt_at = 0 WHERE id = ?`,
-        row.id,
-      );
+      markSynced(database, row.id);
       synced += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'sync_error';
-      const nextRetries = row.retries + 1;
-      const nextAt = Date.now() + backoffMs(row.retries);
-      if (nextRetries >= MAX_SYNC_RETRIES) {
-        database.runSync(
-          `UPDATE outbox SET status = 'failed', retries = ?, last_error = ?, next_attempt_at = 0 WHERE id = ?`,
-          nextRetries,
-          msg,
-          row.id,
-        );
-      } else {
-        database.runSync(
-          `UPDATE outbox SET retries = ?, last_error = ?, next_attempt_at = ? WHERE id = ?`,
-          nextRetries,
-          msg,
-          nextAt,
-          row.id,
-        );
-      }
+      markFailed(database, row, msg);
       lastErr = msg;
     }
   }
+
   return { synced, error: lastErr };
 }

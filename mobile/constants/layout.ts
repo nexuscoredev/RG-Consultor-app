@@ -24,6 +24,20 @@ export const radius = {
   pill: 9999,
 } as const;
 
+/** Altura mínima táctil e padding padrão de botões */
+export const button = {
+  minHeight: 48,
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+} as const;
+
+/** Conteúdo de ScrollView alinhado ao ScreenChrome (paddingHorizontal 24) */
+export const screenScroll = {
+  paddingHorizontal: space.lg,
+  paddingTop: space.lg,
+  gap: space.sm,
+} as const;
+
 /** Sombras suaves (iOS shadow + Android elevation) */
 export const shadow = {
   card: {

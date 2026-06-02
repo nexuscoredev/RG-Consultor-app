@@ -2,7 +2,7 @@ import { RgConsultorLogo } from '@/components/RgConsultorLogo';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuth } from '@/context/AuthContext';
-import { isDemoAuthVisible } from '@/lib/authApi';
+import { getAuthApiHint, isDemoAuthVisible } from '@/lib/authApi';
 import { t } from '@/lib/i18n';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -24,8 +24,8 @@ export default function LoginScreen() {
   const { signIn } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('campo@rgambiental.com.br');
-  const [password, setPassword] = useState('demo');
+  const [email, setEmail] = useState('vendedor@rg.com');
+  const [password, setPassword] = useState('rg2026');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -54,7 +54,9 @@ export default function LoginScreen() {
           </View>
         ) : null}
         <Text style={[styles.h1, { color: p.text }]}>{L.title}</Text>
-        <Text style={[styles.sub, { color: p.textSecondary }]}>{L.demoHint}</Text>
+        <Text style={[styles.sub, { color: p.textSecondary }]}>
+          {isDemoAuthVisible() ? L.demoHint : getAuthApiHint()}
+        </Text>
         <TextInput
           value={email}
           onChangeText={setEmail}

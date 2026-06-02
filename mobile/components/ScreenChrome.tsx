@@ -1,6 +1,7 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { space, tabBarFloatingClearance } from '@/constants/layout';
+import { typography } from '@/constants/typography';
 import { ReactNode, useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,8 +90,8 @@ export function ScreenChrome({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingHorizontal: space.lg, paddingBottom: space.md },
-  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
-  subtitle: { marginTop: 6, fontSize: 15, lineHeight: 20 },
+  title: { ...typography.h1, fontWeight: typography.h1.fontWeight },
+  subtitle: { ...typography.subtitle, marginTop: 6 },
   scroll: { paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.lg },
   /** Permite que um ScrollView filho ocupe altura restante sem colapsar no Android. */
   noScrollBody: { flex: 1, minHeight: 0 },

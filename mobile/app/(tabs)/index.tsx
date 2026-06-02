@@ -1,6 +1,9 @@
 import { HomePullTip } from '@/components/HomePullTip';
+import { CommercialHubCard } from '@/components/home/CommercialHubCard';
 import { HomeHeroGlass } from '@/components/home/HomeHeroGlass';
 import { MissionProgressBar } from '@/components/home/MissionProgressBar';
+import { PipelineSummaryCard } from '@/components/home/PipelineSummaryCard';
+import { RouteDayTimeline } from '@/components/home/RouteDayTimeline';
 import { RgConsultorLogo } from '@/components/RgConsultorLogo';
 import { ScreenChrome } from '@/components/ScreenChrome';
 import { StopCard } from '@/components/StopCard';
@@ -10,6 +13,8 @@ import { HapticPressable } from '@/components/ui/HapticPressable';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { radius, space } from '@/constants/layout';
+import { typography } from '@/constants/typography';
+import { iconSize } from '@/constants/icons';
 import { useDemoGps } from '@/context/DemoGpsContext';
 import { useGamification } from '@/context/GamificationContext';
 import { useSync } from '@/context/SyncContext';
@@ -17,17 +22,22 @@ import { fetchRouteDay } from '@/lib/api';
 import { distanceMeters } from '@/lib/geo';
 import { MISSIONS, tierForXp } from '@/lib/gamificationEngine';
 import { t } from '@/lib/i18n';
-import { getDefaultRouteToday, mockMgmtAlerts, todayIsoDate } from '@/lib/mockData';
+import {
+  addDaysIso,
+  getDefaultRouteToday,
+  mockMgmtAlerts,
+  routeForDate,
+  todayIsoDate,
+} from '@/lib/mockData';
 import { saveRouteToCache } from '@/lib/routesCache';
 import { getVisit, type VisitLocal } from '@/lib/visitStore';
 import type { RotaDia } from '@rg-ambiental/shared';
 import { useFocusEffect } from '@react-navigation/native';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Location from 'expo-location';
 import { Link, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
 
 export default function HomeScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -38,6 +48,8 @@ export default function HomeScreen() {
   const [route, setRoute] = useState<RotaDia>(() => getDefaultRouteToday());
   const [visits, setVisits] = useState<Record<string, VisitLocal | null>>({});
   const [nearClient, setNearClient] = useState(false);
+  const tomorrowIso = useMemo(() => addDaysIso(todayIsoDate(), 1), []);
+  const [tomorrowRoute, setTomorrowRoute] = useState<RotaDia | null>(null);
 
   const dateLabel = useMemo(
     () =>
@@ -100,7 +112,30 @@ export default function HomeScreen() {
     };
   }, [reloadVisits]);
 
-  const next = route.stops[0];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetchRouteDay(tomorrowIso);
+        if (!cancelled) {
+          saveRouteToCache(r);
+          setTomorrowRoute(r);
+        }
+      } catch {
+        if (!cancelled) setTomorrowRoute(routeForDate(tomorrowIso));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tomorrowIso]);
+
+  const activeStop = useMemo(() => {
+    const open = route.stops.find((s) => !visits[s.id]?.check_out_at);
+    return open ?? route.stops[0];
+  }, [route.stops, visits]);
+
+  const next = activeStop;
 
   useFocusEffect(
     useCallback(() => {
@@ -148,14 +183,6 @@ export default function HomeScreen() {
   const progress = missionTgt > 0 ? Math.min(1, missionCur / missionTgt) : 0;
   const H = t('home');
 
-  const cardShell = [
-    styles.statusCard,
-    {
-      backgroundColor: palette.card,
-      borderColor: palette.border,
-    },
-  ];
-
   if (!next) {
     return (
       <ScreenChrome title="" subtitle="">
@@ -185,55 +212,54 @@ export default function HomeScreen() {
 
       <HomePullTip />
 
-      <View style={styles.bentoRow}>
-        <View style={cardShell}>
-          <View style={styles.statusHead}>
-            <View style={[styles.iconBadge, { backgroundColor: `${palette.tint}12` }]}>
-              <MaterialCommunityIcons name="map-marker-outline" size={20} color={palette.tint} />
-            </View>
-            <Text style={[styles.statusEyebrow, { color: palette.textSecondary }]}>{H.nextAddress}</Text>
-          </View>
-          <Text style={[styles.statusTitle, { color: palette.text }]} numberOfLines={2}>
-            {next.accountName}
-          </Text>
-          <Text style={[styles.statusMeta, { color: palette.textSecondary }]} numberOfLines={2}>
-            {next.windowStart.slice(11, 16)} · {next.addressLine}
-          </Text>
-          <Link href={'/(tabs)/agenda' as Href} asChild>
-            <HapticPressable
-              style={[styles.ctaSolid, { backgroundColor: palette.tint }]}
-              accessibilityRole="button"
-              accessibilityLabel={H.openAgendaA11y}>
-              <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#fff" />
-              <Text style={styles.ctaSolidText}>{H.openAgenda}</Text>
-            </HapticPressable>
-          </Link>
-        </View>
+      <CommercialHubCard />
+      <PipelineSummaryCard />
 
-        <View style={cardShell}>
-          <View style={styles.statusHead}>
-            <View style={[styles.iconBadge, { backgroundColor: `${palette.tint}12` }]}>
-              <MaterialCommunityIcons name="target" size={20} color={palette.tint} />
-            </View>
-            <Text style={[styles.statusEyebrow, { color: palette.textSecondary }]}>{H.currentMission}</Text>
+      <Text style={[typography.sectionLabel, styles.sectionHeading, { color: palette.textSecondary }]}>
+        {arrivalHighlight ? H.atClientTitle : H.focusVisit}
+      </Text>
+      {arrivalHighlight ? (
+        <Text style={[typography.body, styles.focusHint, { color: palette.textSecondary }]}>{H.atClientBody}</Text>
+      ) : null}
+      <StopCard
+        stop={next}
+        routeDate={route.date}
+        visit={visits[next.id] ?? null}
+        onMutate={() => reloadVisits(route)}
+        highlightArrival={arrivalHighlight}
+      />
+
+      <RouteDayTimeline
+        todayRoute={route}
+        tomorrowRoute={tomorrowRoute}
+        tomorrowIso={tomorrowIso}
+        visitsToday={visits}
+        highlightStopId={arrivalHighlight ? next.id : activeStop?.id}
+      />
+
+      <Surface style={[styles.missionCard, { borderColor: palette.border }]}>
+        <View style={styles.statusHead}>
+          <View style={[styles.iconBadge, { backgroundColor: `${palette.tint}12` }]}>
+            <MaterialCommunityIcons name="target" size={20} color={palette.tint} />
           </View>
-          <Text style={[styles.statusTitle, { color: palette.text }]} numberOfLines={2}>
-            {missionDef.title}
-          </Text>
-          <MissionProgressBar progress={progress} trackColor={scheme === 'dark' ? 'rgba(255,255,255,0.12)' : '#e5e7eb'} />
-          <Text style={[styles.statusMeta, { color: palette.textSecondary }]}>
-            {H.missionProgress.replace('{current}', String(missionCur)).replace('{target}', String(missionTgt))}
-          </Text>
-          <Link href={'/(tabs)/more/missions' as Href} asChild>
-            <HapticPressable
-              style={[styles.ctaOutline, { borderColor: palette.tint }]}
-              accessibilityRole="button"
-              accessibilityLabel={H.openMissionCenterA11y}>
-              <Text style={[styles.ctaOutlineText, { color: palette.tint }]}>{H.viewMissions}</Text>
-            </HapticPressable>
-          </Link>
+          <Text style={[typography.eyebrow, styles.statusEyebrow, { color: palette.textSecondary }]}>{H.currentMission}</Text>
         </View>
-      </View>
+        <Text style={[typography.title, styles.statusTitle, { color: palette.text }]} numberOfLines={2}>
+          {missionDef.title}
+        </Text>
+        <MissionProgressBar progress={progress} trackColor={scheme === 'dark' ? 'rgba(255,255,255,0.12)' : '#e5e7eb'} />
+        <Text style={[typography.caption, styles.statusMeta, { color: palette.textSecondary }]}>
+          {H.missionProgress.replace('{current}', String(missionCur)).replace('{target}', String(missionTgt))}
+        </Text>
+        <Link href={'/(tabs)/more/missions' as Href} asChild>
+          <HapticPressable
+            style={[styles.ctaOutline, { borderColor: palette.tint }]}
+            accessibilityRole="button"
+            accessibilityLabel={H.openMissionCenterA11y}>
+            <Text style={[styles.ctaOutlineText, { color: palette.tint }]}>{H.viewMissions}</Text>
+          </HapticPressable>
+        </Link>
+      </Surface>
 
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
@@ -265,65 +291,9 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{H.shortcuts}</Text>
-      <View style={styles.quickRow}>
-        <Link href={'/(tabs)/agenda' as Href} asChild>
-          <HapticPressable
-            style={({ pressed }) => [
-              styles.quickChip,
-              {
-                backgroundColor: pressed ? `${palette.tint}14` : palette.card,
-                borderColor: palette.border,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={H.openAgendaA11y2}>
-            <MaterialCommunityIcons name="calendar-blank-outline" size={20} color={palette.tint} />
-            <Text style={[styles.quickText, { color: palette.text }]}>{H.agenda}</Text>
-          </HapticPressable>
-        </Link>
-        <Link href={'/(tabs)/more/missions' as Href} asChild>
-          <HapticPressable
-            style={({ pressed }) => [
-              styles.quickChip,
-              {
-                backgroundColor: pressed ? `${palette.tint}14` : palette.card,
-                borderColor: palette.border,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={H.openMissionsA11y}>
-            <MaterialCommunityIcons name="trophy-outline" size={20} color={palette.tint} />
-            <Text style={[styles.quickText, { color: palette.text }]}>{H.missions}</Text>
-          </HapticPressable>
-        </Link>
-        <Link href={'/(tabs)/more/operation' as Href} asChild>
-          <HapticPressable
-            style={({ pressed }) => [
-              styles.quickChip,
-              {
-                backgroundColor: pressed ? `${palette.tint}14` : palette.card,
-                borderColor: palette.border,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={H.openVideosA11y}>
-            <MaterialCommunityIcons name="play-circle-outline" size={22} color={palette.tint} />
-            <Text style={[styles.quickText, { color: palette.text }]}>{H.showroom}</Text>
-          </HapticPressable>
-        </Link>
-      </View>
-
       <SyncBanner />
 
-      {arrivalHighlight ? (
-        <Surface elevated style={{ borderColor: palette.lime, padding: space.lg, gap: 8 }}>
-          <Text style={[styles.arrivalTitle, { color: palette.text }]}>{H.atClientTitle}</Text>
-          <Text style={[styles.arrivalBody, { color: palette.textSecondary }]}>{H.atClientBody}</Text>
-        </Surface>
-      ) : null}
-
-      <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{H.management}</Text>
+      <Text style={[typography.sectionLabel, styles.sectionHeading, { color: palette.textSecondary }]}>{H.management}</Text>
       {mockMgmtAlerts.map((a) => (
         <Surface
           key={a.id}
@@ -333,35 +303,24 @@ export default function HomeScreen() {
             gap: space.sm,
           }}>
           <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
-            <FontAwesome name="bell" size={18} color={a.severity === 'danger' ? palette.danger : palette.tint} />
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={iconSize.sm}
+              color={a.severity === 'danger' ? palette.danger : palette.tint}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.alertTitle, { color: a.severity === 'danger' ? palette.danger : palette.text }]}>
+              <Text style={[typography.title, styles.alertTitle, { color: a.severity === 'danger' ? palette.danger : palette.text }]}>
                 {a.title}
               </Text>
-              <Text style={[styles.alertBody, { color: palette.textSecondary }]}>{a.body}</Text>
+              <Text style={[typography.body, styles.alertBody, { color: palette.textSecondary }]}>{a.body}</Text>
             </View>
           </View>
         </Surface>
       ))}
 
-      <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{H.nextVisit}</Text>
-      <Surface elevated style={{ gap: space.md, paddingVertical: space.lg }}>
-        <Text style={[styles.heroTime, { color: palette.tint }]}>
-          {next.windowStart.slice(11, 16)} — {next.accountName}
-        </Text>
-        <Text style={[styles.heroSub, { color: palette.textSecondary }]}>{next.addressLine}</Text>
-        <StopCard
-          stop={next}
-          routeDate={route.date}
-          visit={visits[next.id] ?? null}
-          onMutate={() => reloadVisits(route)}
-          highlightArrival={arrivalHighlight}
-        />
-      </Surface>
-
       <Link href={'/(tabs)/more/operation' as Href} asChild>
         <HapticPressable
-          style={({ pressed }) => [
+          style={({ pressed }: PressableStateCallbackType) => [
             styles.ctaBanner,
             { backgroundColor: palette.forestDeep, opacity: pressed ? 0.92 : 1 },
           ]}
@@ -369,7 +328,7 @@ export default function HomeScreen() {
           accessibilityLabel={H.openShowroomA11y}>
           <MaterialCommunityIcons name="play-circle-outline" size={24} color="#fff" />
           <Text style={styles.ctaText}>{H.operationCta}</Text>
-          <MaterialCommunityIcons name="chevron-right" size={22} color="#fff" />
+          <MaterialCommunityIcons name="chevron-right" size={iconSize.md} color="#fff" />
         </HapticPressable>
       </Link>
     </ScreenChrome>
@@ -377,17 +336,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  bentoRow: { flexDirection: 'row', gap: space.md, alignItems: 'stretch' },
-  statusCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    padding: space.md,
-    gap: 10,
-    minWidth: 0,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
+  missionCard: { gap: 10, padding: space.md, shadowOpacity: 0, elevation: 0 },
+  sectionHeading: { marginTop: 4, marginBottom: 2 },
+  focusHint: { marginTop: -4, marginBottom: 2 },
   statusHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBadge: {
     width: 36,
@@ -396,32 +347,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', flex: 1 },
-  statusTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3, lineHeight: 22 },
-  statusMeta: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
-  ctaSolid: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    minHeight: 48,
-  },
-  ctaSolidText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  ctaOutline: {
-    marginTop: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    minHeight: 48,
-  },
-  ctaOutlineText: { fontSize: 14, fontWeight: '800' },
+  statusEyebrow: { flex: 1 },
+  statusTitle: { letterSpacing: -0.3, lineHeight: 22 },
+  statusMeta: {},
+  ctaOutlineText: { ...typography.buttonSm },
   statsRow: { flexDirection: 'row', gap: space.md },
   statCard: {
     flex: 1,
@@ -440,9 +369,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', flex: 1 },
+  statLabel: { ...typography.eyebrow, flex: 1, letterSpacing: 0.8 },
   statVal: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  statHint: { fontSize: 12, fontWeight: '800' },
+  statHint: { ...typography.captionBold },
   ctaSolidSm: {
     marginTop: 6,
     alignItems: 'center',
@@ -451,29 +380,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     minHeight: 40,
   },
-  ctaSolidTextSm: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
+  ctaSolidTextSm: { color: '#fff', ...typography.buttonSm },
+  ctaOutline: {
     marginTop: 4,
-    marginBottom: 2,
-  },
-  quickRow: { flexDirection: 'row', gap: space.sm, justifyContent: 'space-between' },
-  quickChip: {
-    flex: 1,
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: space.md,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    minHeight: 48,
   },
-  quickText: { fontSize: 12, fontWeight: '800' },
-  alertTitle: { fontWeight: '900', fontSize: 15 },
-  alertBody: { fontSize: 14, lineHeight: 20, marginTop: 4 },
-  heroTime: { fontSize: 22, fontWeight: '900', letterSpacing: -0.4 },
-  heroSub: { fontSize: 15, lineHeight: 22 },
+  alertTitle: {},
+  alertBody: { marginTop: 4 },
   ctaBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -482,9 +401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     borderRadius: radius.lg,
   },
-  ctaText: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '800' },
+  ctaText: { flex: 1, color: '#fff', ...typography.button },
   footer: { padding: space.md, borderTopWidth: StyleSheet.hairlineWidth },
-  footerText: { fontSize: 13, textAlign: 'center' },
-  arrivalTitle: { fontSize: 18, fontWeight: '900' },
-  arrivalBody: { fontSize: 14, lineHeight: 20 },
+  footerText: { ...typography.caption, textAlign: 'center' },
 });

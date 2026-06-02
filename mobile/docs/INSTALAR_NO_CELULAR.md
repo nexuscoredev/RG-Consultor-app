@@ -23,8 +23,16 @@
 
 ## Perfis de login (demonstração)
 
-- **Consultor:** qualquer e-mail comercial + senha não vazia (ex.: `campo@rgambiental.com.br`).
-- **Master / ADM:** e-mail começando com `master@` ou `admin@` (ex.: `master@rgambiental.com.br`) — abre o painel consolidado no app.
+Por defeito o app usa **auth mock** (qualquer e-mail comercial + senha não vazia). Para testar com a API local:
+
+1. Na pasta raiz: `npm run api` (porta 3001).
+2. Em `mobile/.env`: `EXPO_PUBLIC_AUTH_MODE=api`, `EXPO_PUBLIC_API_MODE=api`, `EXPO_PUBLIC_API_BASE_URL=http://SEU_IP:3001`.
+3. Reinicie o Expo.
+
+Credenciais demo da API:
+
+- **Consultor:** `vendedor@rg.com` / `rg2026`
+- **Master:** `master@rg.com` / `rg2026` — painel consolidado no app e endpoint `/master/dashboard`.
 
 ## Painel web master
 

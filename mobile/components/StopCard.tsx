@@ -1,20 +1,28 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { useDemoGps } from '@/context/DemoGpsContext';
 import { useGamification } from '@/context/GamificationContext';
 import { useSync } from '@/context/SyncContext';
+import { radius, space } from '@/constants/layout';
+import { isDemoToolsEnabled } from '@/lib/demoTools';
 import { distanceMeters } from '@/lib/geo';
 import {
   recordCheckInJustified,
   recordCheckInValid,
   recordCheckOut,
-  recordPipelineStep,
 } from '@/lib/gamificationEngine';
+import { visitSessionHref } from '@/lib/commercialLinks';
+import { t } from '@/lib/i18n';
 import { enqueueCheckIn, enqueueCheckOut } from '@/lib/outbox';
-import { setCheckIn, setCheckOut, setNextStep, type VisitLocal } from '@/lib/visitStore';
+import { whatsAppUrl } from '@/lib/proposalTemplate';
+import { registerVisitOutcome, type VisitOutcomeKind } from '@/lib/visitOutcome';
+import { setCheckIn, setCheckOut, type VisitLocal } from '@/lib/visitStore';
 import type { Parada } from '@rg-ambiental/shared';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
+import { Link } from 'expo-router';
 import * as Location from 'expo-location';
 import { useCallback, useState } from 'react';
 import {
@@ -41,15 +49,16 @@ type Props = {
   routeDate: string;
   visit: VisitLocal | null;
   onMutate: () => void;
-  /** Destaca o card quando o GPS indica proximidade do cliente (próxima ação: check-in). */
   highlightArrival?: boolean;
 };
 
 export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const palette = Colors[scheme];
+  const S = t('stopCard');
+  const C = t('common');
   const { simulateAtClient } = useDemoGps();
-  const { refreshCounts } = useSync();
+  const { refreshCounts, runSyncNow } = useSync();
   const { refresh: refreshGamification } = useGamification();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -58,6 +67,8 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
   const [pendingAction, setPendingAction] = useState<'in' | 'out' | null>(null);
 
   const [lng, lat] = stop.geo.coordinates;
+  const windowStart = stop.windowStart.slice(11, 16);
+  const windowEnd = stop.windowEnd.slice(11, 16);
 
   const openMaps = useCallback(() => {
     void Linking.openURL(mapsUrl(lat, lng));
@@ -80,7 +91,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
     } else {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Localização', 'Permissão negada. Ative a simulação GPS na Agenda ou conceda acesso.');
+        Alert.alert(S.locationTitle, S.locationDenied);
         return null;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -89,7 +100,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
       accuracyM = pos.coords.accuracy ?? undefined;
     }
     return { latP, lngP, accuracyM };
-  }, [lat, lng, simulateAtClient]);
+  }, [S.locationDenied, S.locationTitle, lat, lng, simulateAtClient]);
 
   const performCheckIn = useCallback(
     async (justificationReason?: string) => {
@@ -106,27 +117,26 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
           return;
         }
         if (!valid && (justificationReason?.trim().length ?? 0) < 8) {
-          Alert.alert('Justificativa', 'Descreva o motivo (mínimo 8 caracteres) para check-in fora do raio.');
+          Alert.alert(S.justificationTitle, S.justificationMin);
           setPendingAction('in');
           setJustifyOpen(true);
           return;
         }
         const at = new Date().toISOString();
         const coords: [number, number] = [lngP, latP];
-        const payload = {
+        enqueueCheckIn({
           paradaId: stop.id,
           at,
           geo: { type: 'Point' as const, coordinates: coords },
           accuracyM,
-          mockOverride: simulateAtClient || undefined,
+          mockOverride: simulateAtClient && isDemoToolsEnabled() ? true : undefined,
           justificationReason: justificationReason?.trim() || undefined,
-        };
-        enqueueCheckIn(payload);
+        });
         setCheckIn(routeDate, stop.id, at);
         setFeedback(
           valid
-            ? `Check-in válido (${Math.round(dist)} m). Na fila de sync.`
-            : `Check-in fora do raio (${Math.round(dist)} m) — registrado com justificativa.`,
+            ? S.checkInValid.replace('{dist}', String(Math.round(dist)))
+            : S.checkInJustified.replace('{dist}', String(Math.round(dist))),
         );
         if (valid) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -140,6 +150,10 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
       }
     },
     [
+      S.checkInJustified,
+      S.checkInValid,
+      S.justificationMin,
+      S.justificationTitle,
       lat,
       lng,
       onMutate,
@@ -168,7 +182,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
           return;
         }
         if (!valid && (justificationReason?.trim().length ?? 0) < 8) {
-          Alert.alert('Justificativa', 'Mínimo 8 caracteres para check-out distante do cliente.');
+          Alert.alert(S.justificationTitle, S.justificationMinOut);
           setPendingAction('out');
           setJustifyOpen(true);
           return;
@@ -180,11 +194,11 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
           at,
           geo: { type: 'Point', coordinates: coords },
           accuracyM,
-          mockOverride: simulateAtClient || undefined,
+          mockOverride: simulateAtClient && isDemoToolsEnabled() ? true : undefined,
           justificationReason: justificationReason?.trim() || undefined,
         });
         setCheckOut(routeDate, stop.id, at);
-        setFeedback(`Check-out registrado (${Math.round(dist)} m).`);
+        setFeedback(S.checkOutDone.replace('{dist}', String(Math.round(dist))));
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         recordCheckOut();
         refreshGamification();
@@ -195,6 +209,9 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
       }
     },
     [
+      S.checkOutDone,
+      S.justificationMinOut,
+      S.justificationTitle,
       lat,
       lng,
       onMutate,
@@ -208,52 +225,56 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
     ],
   );
 
+  const openWhatsApp = useCallback(() => {
+    const text = S.waTemplate
+      .replace('{name}', stop.contact.name)
+      .replace('{company}', stop.accountName);
+    void Linking.openURL(whatsAppUrl(text, stop.contact.phoneE164));
+  }, [S.waTemplate, stop.accountName, stop.contact.name, stop.contact.phoneE164]);
+
   const onNextStep = useCallback(() => {
-    Alert.alert('Próximo passo', 'O que registrar após a visita?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Proposta enviada',
-        onPress: () => {
-          setNextStep(routeDate, stop.id, 'proposta', 'Proposta enviada ao cliente');
-          recordPipelineStep('proposta');
-          refreshGamification();
-          onMutate();
-        },
-      },
-      {
-        text: 'Pendência MTR',
-        onPress: () => {
-          setNextStep(routeDate, stop.id, 'mtr', 'Aguardando MTR / documentação');
-          recordPipelineStep('mtr');
-          refreshGamification();
-          onMutate();
-        },
-      },
-      {
-        text: 'Agendar coleta',
-        onPress: () => {
-          setNextStep(routeDate, stop.id, 'coleta', 'Coleta agendada');
-          recordPipelineStep('coleta');
-          refreshGamification();
-          onMutate();
-        },
-      },
-      {
-        text: 'Outro',
-        onPress: () => {
-          setNextStep(routeDate, stop.id, 'outro', 'Registrado em campo');
-          recordPipelineStep('outro');
-          refreshGamification();
-          onMutate();
-        },
-      },
+    const apply = (kind: VisitOutcomeKind) => {
+      void (async () => {
+        await registerVisitOutcome(kind, {
+          routeDate,
+          stopId: stop.id,
+          company: stop.accountName,
+        });
+        refreshGamification();
+        refreshCounts();
+        void runSyncNow();
+        onMutate();
+      })();
+    };
+
+    Alert.alert(S.nextStepTitle, S.nextStepBody, [
+      { text: C.cancel, style: 'cancel' },
+      { text: S.outcomeProposal, onPress: () => apply('proposta') },
+      { text: S.outcomeMtr, onPress: () => apply('mtr') },
+      { text: S.outcomeColeta, onPress: () => apply('coleta') },
+      { text: S.outcomeOther, onPress: () => apply('outro') },
     ]);
-  }, [onMutate, refreshGamification, routeDate, stop.id]);
+  }, [
+    C.cancel,
+    S.nextStepBody,
+    S.nextStepTitle,
+    S.outcomeColeta,
+    S.outcomeMtr,
+    S.outcomeOther,
+    S.outcomeProposal,
+    onMutate,
+    refreshCounts,
+    refreshGamification,
+    routeDate,
+    runSyncNow,
+    stop.accountName,
+    stop.id,
+  ]);
 
   const submitJustification = useCallback(() => {
     const j = justifyDraft.trim();
     if (j.length < 8) {
-      Alert.alert('Justificativa', 'Mínimo 8 caracteres.');
+      Alert.alert(S.justificationTitle, S.justificationMin);
       return;
     }
     setJustifyOpen(false);
@@ -261,7 +282,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
     if (pendingAction === 'in') void performCheckIn(j);
     if (pendingAction === 'out') void performCheckOut(j);
     setPendingAction(null);
-  }, [justifyDraft, pendingAction, performCheckIn, performCheckOut]);
+  }, [S.justificationMin, S.justificationTitle, justifyDraft, pendingAction, performCheckIn, performCheckOut]);
 
   const checkedIn = Boolean(visit?.check_in_at);
   const checkedOut = Boolean(visit?.check_out_at);
@@ -281,8 +302,10 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
           elevation: highlightArrival ? 6 : 0,
         },
       ]}>
-      <Text style={[styles.time, { color: palette.tint }]} accessibilityLabel={`Janela ${stop.windowStart.slice(11, 16)} até ${stop.windowEnd.slice(11, 16)}`}>
-        {stop.windowStart.slice(11, 16)} – {stop.windowEnd.slice(11, 16)}
+      <Text
+        style={[styles.time, { color: palette.tint }]}
+        accessibilityLabel={S.windowA11y.replace('{start}', windowStart).replace('{end}', windowEnd)}>
+        {windowStart} – {windowEnd}
       </Text>
       <Text style={[styles.account, { color: palette.text }]}>{stop.accountName}</Text>
       <Text style={[styles.address, { color: palette.textSecondary }]}>
@@ -292,102 +315,131 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
       </Text>
       {visit?.next_step ? (
         <Text style={[styles.badge, { color: palette.tint }]}>
-          Próximo passo: {visit.next_step} — {visit.next_note}
+          {S.nextStepBadge.replace('{step}', visit.next_step).replace('{note}', visit.next_note ?? '')}
         </Text>
       ) : null}
       {checkedIn ? (
-        <Text style={[styles.meta, { color: palette.textSecondary }]}>Check-in: {visit?.check_in_at}</Text>
+        <Text style={[styles.meta, { color: palette.textSecondary }]}>
+          {S.checkInAt.replace('{at}', visit?.check_in_at ?? '')}
+        </Text>
       ) : null}
       {checkedOut ? (
-        <Text style={[styles.meta, { color: palette.textSecondary }]}>Check-out: {visit?.check_out_at}</Text>
+        <Text style={[styles.meta, { color: palette.textSecondary }]}>
+          {S.checkOutAt.replace('{at}', visit?.check_out_at ?? '')}
+        </Text>
       ) : null}
-      <View style={styles.contactRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.contactName, { color: palette.text }]}>{stop.contact.name}</Text>
-          <Text style={[styles.contactRole, { color: palette.textSecondary }]}>{stop.contact.role}</Text>
-          <Text style={[styles.phone, { color: palette.textSecondary }]}>{stop.contact.phoneE164}</Text>
+
+      <View style={styles.contactBlock}>
+        <Text style={[styles.contactName, { color: palette.text }]}>{stop.contact.name}</Text>
+        <Text style={[styles.contactRole, { color: palette.textSecondary }]}>{stop.contact.role}</Text>
+        <Text style={[styles.phone, { color: palette.textSecondary }]}>{stop.contact.phoneE164}</Text>
+      </View>
+
+      <View style={styles.gridRow}>
+        <View style={styles.gridCell}>
+          <PrimaryButton
+            fullWidth
+            label={S.call}
+            onPress={call}
+            accessibilityLabel={S.callA11y.replace('{name}', stop.contact.name)}
+          />
         </View>
-        <Pressable
-          onPress={call}
-          style={[styles.callBtn, { backgroundColor: palette.tint }]}
-          accessibilityRole="button"
-          accessibilityLabel={`Ligar para ${stop.contact.name}`}>
-          <Text style={styles.callBtnText}>Ligar</Text>
-        </Pressable>
+        <View style={styles.gridCell}>
+          <PrimaryButton
+            fullWidth
+            variant="whatsapp"
+            label={S.whatsApp}
+            onPress={openWhatsApp}
+            accessibilityLabel={S.whatsAppA11y.replace('{name}', stop.contact.name)}
+          />
+        </View>
       </View>
-      <View style={styles.actions}>
-        <Pressable
-          onPress={openMaps}
-          style={[styles.secondaryBtn, { borderColor: palette.border }]}
-          accessibilityRole="button"
-          accessibilityLabel="Abrir rota no Google Maps">
-          <Text style={[styles.secondaryBtnText, { color: palette.text }]}>Google Maps</Text>
-        </Pressable>
-        <Pressable
-          onPress={openWaze}
-          style={[styles.secondaryBtn, { borderColor: palette.border }]}
-          accessibilityRole="button"
-          accessibilityLabel="Abrir rota no Waze">
-          <Text style={[styles.secondaryBtnText, { color: palette.text }]}>Waze</Text>
-        </Pressable>
+
+      <Link href={visitSessionHref(stop, routeDate)} asChild>
+        <SecondaryButton
+          fullWidth
+          tint
+          label={S.visitMode}
+          accessibilityLabel={S.visitModeA11y}
+        />
+      </Link>
+
+      <View style={styles.gridRow}>
+        <View style={styles.gridCell}>
+          <SecondaryButton
+            fullWidth
+            label={S.maps}
+            onPress={openMaps}
+            accessibilityLabel={S.mapsA11y}
+          />
+        </View>
+        <View style={styles.gridCell}>
+          <SecondaryButton
+            fullWidth
+            label={S.waze}
+            onPress={openWaze}
+            accessibilityLabel={S.wazeA11y}
+          />
+        </View>
       </View>
+
       {!checkedIn ? (
-        <Pressable
+        <PrimaryButton
+          fullWidth
+          label={S.checkIn}
           onPress={() => void performCheckIn()}
           disabled={busy}
-          style={[styles.primaryBtn, { backgroundColor: palette.tint }]}
-          accessibilityRole="button"
-          accessibilityLabel="Check-in com validação de GPS">
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Check-in GPS</Text>}
-        </Pressable>
+          loading={busy}
+          accessibilityLabel={S.checkInA11y}
+        />
       ) : !checkedOut ? (
         <>
-          <Pressable
+          <PrimaryButton
+            fullWidth
+            variant="lime"
+            label={S.checkOut}
             onPress={() => void performCheckOut()}
             disabled={busy}
-            style={[styles.primaryBtn, { backgroundColor: palette.lime }]}
-            accessibilityRole="button"
-            accessibilityLabel="Check-out com validação de GPS">
-            {busy ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={[styles.primaryBtnText, { color: '#ffffff' }]}>Check-out GPS</Text>
-            )}
-          </Pressable>
-          <Pressable
+            loading={busy}
+            accessibilityLabel={S.checkOutA11y}
+          />
+          <SecondaryButton
+            fullWidth
+            tint
+            label={S.nextStepBtn}
             onPress={onNextStep}
-            style={[styles.outlineBtn, { borderColor: palette.tint }]}
-            accessibilityRole="button"
-            accessibilityLabel="Registrar próximo passo comercial">
-            <Text style={[styles.outlineText, { color: palette.tint }]}>Próximo passo</Text>
-          </Pressable>
+            accessibilityLabel={S.nextStepBtnA11y}
+          />
         </>
       ) : null}
       {feedback ? <Text style={[styles.feedback, { color: palette.textSecondary }]}>{feedback}</Text> : null}
 
       <Modal visible={justifyOpen} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: palette.card }]}>
-            <Text style={[styles.modalTitle, { color: palette.text }]}>Justificativa obrigatória</Text>
-            <Text style={{ color: palette.textSecondary, marginBottom: 8 }}>
-              Você está fora do raio permitido. Informe o motivo (auditoria / revisão pelo gestor).
-            </Text>
+          <View style={[styles.modalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>{S.justificationRequired}</Text>
+            <Text style={[styles.modalBody, { color: palette.textSecondary }]}>{S.justificationBody}</Text>
             <TextInput
               value={justifyDraft}
               onChangeText={setJustifyDraft}
-              placeholder="Ex.: Cliente autorizou recepção no portão principal..."
+              placeholder={S.justificationPlaceholder}
               placeholderTextColor={palette.textSecondary}
               multiline
               style={[styles.input, { borderColor: palette.border, color: palette.text }]}
-              accessibilityLabel="Campo de justificativa"
+              accessibilityLabel={S.justificationFieldA11y}
             />
             <View style={styles.modalActions}>
-              <Pressable onPress={() => { setJustifyOpen(false); setPendingAction(null); }} style={styles.modalBtnGhost}>
-                <Text style={{ color: palette.textSecondary }}>Cancelar</Text>
+              <Pressable
+                onPress={() => {
+                  setJustifyOpen(false);
+                  setPendingAction(null);
+                }}
+                style={styles.modalBtnGhost}
+                accessibilityRole="button"
+                accessibilityLabel={C.cancel}>
+                <Text style={{ color: palette.textSecondary }}>{C.cancel}</Text>
               </Pressable>
-              <Pressable onPress={submitJustification} style={[styles.modalBtn, { backgroundColor: palette.tint }]}>
-                <Text style={styles.primaryBtnText}>Confirmar</Text>
-              </Pressable>
+              <PrimaryButton label={S.confirm} onPress={submitJustification} style={styles.modalConfirm} />
             </View>
           </View>
         </View>
@@ -398,63 +450,40 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: radius.md,
     borderWidth: 1,
-    padding: 16,
-    gap: 8,
+    padding: space.md,
+    gap: space.sm,
   },
   time: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
-  account: { fontSize: 18, fontWeight: '700' },
+  account: { fontSize: 18, fontWeight: '800' },
   address: { fontSize: 14, lineHeight: 20 },
   meta: { fontSize: 12 },
   badge: { fontSize: 13, fontWeight: '700' },
-  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
-  contactName: { fontSize: 16, fontWeight: '600' },
+  contactBlock: { marginTop: space.xs },
+  contactName: { fontSize: 16, fontWeight: '700' },
   contactRole: { fontSize: 13, marginTop: 2 },
   phone: { fontSize: 13, marginTop: 2 },
-  callBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
-  callBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  secondaryBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  secondaryBtnText: { fontWeight: '600', fontSize: 14 },
-  primaryBtn: {
-    marginTop: 4,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  outlineBtn: {
-    marginTop: 6,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  outlineText: { fontWeight: '800', fontSize: 14 },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  feedback: { fontSize: 13, lineHeight: 18, marginTop: 4 },
+  gridRow: { flexDirection: 'row', gap: space.sm },
+  gridCell: { flex: 1 },
+  feedback: { fontSize: 13, lineHeight: 18 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
-    padding: 24,
+    padding: space.lg,
   },
-  modalCard: { borderRadius: 16, padding: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 8 },
+  modalCard: { borderRadius: radius.md, padding: space.md, borderWidth: 1 },
+  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: space.xs },
+  modalBody: { marginBottom: space.sm, lineHeight: 20 },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: radius.sm,
     minHeight: 100,
-    padding: 12,
+    padding: space.sm,
     textAlignVertical: 'top',
   },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 12 },
-  modalBtnGhost: { padding: 10 },
-  modalBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: space.sm, marginTop: space.sm },
+  modalBtnGhost: { padding: space.sm },
+  modalConfirm: { paddingHorizontal: space.md, minHeight: 44, paddingVertical: 10 },
 });

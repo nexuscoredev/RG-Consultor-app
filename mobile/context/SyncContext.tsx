@@ -39,7 +39,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setStatus('syncing');
-    const { synced, error } = processOutboxSync();
+    const { synced, error } = await processOutboxSync();
     refreshCounts();
     if (error) {
       setStatus('error');
@@ -58,7 +58,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshCounts();
-  }, [refreshCounts]);
+    const interval = setInterval(() => {
+      void runSyncNow();
+    }, 90_000);
+    return () => clearInterval(interval);
+  }, [refreshCounts, runSyncNow]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s: AppStateStatus) => {
