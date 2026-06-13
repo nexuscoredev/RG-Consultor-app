@@ -32,65 +32,75 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <section className="login-page__brand" aria-hidden={false}>
-        <RgLogo variant="hero" subtitle="Gestão de visitas e ciclo comercial" />
-        <div>
-          <h1 className="login-page__brand-title">Consultoria de campo, com método.</h1>
-          <p className="login-page__brand-copy">
-            Agenda, funil comercial, propostas e pipeline — otimizado para tablet e celular no navegador.
-          </p>
+      <section className="login-page__brand" aria-label="RG Ambiental Consultor">
+        <div className="login-page__brand-inner">
+          <span className="login-page__eyebrow">Consultor de campo</span>
+          <RgLogo variant="hero" subtitle="Gestão de visitas e ciclo comercial" />
+          <div className="login-page__brand-copy-block">
+            <h1 className="login-page__brand-title">Consultoria de campo, com método.</h1>
+            <p className="login-page__brand-copy">
+              Agenda, funil comercial, propostas e pipeline — otimizado para tablet e celular no navegador.
+            </p>
+          </div>
+          <ul className="login-page__brand-list">
+            <li>Rota do dia e paradas no mapa</li>
+            <li>Kit comercial em 4 fases</li>
+            <li>Propostas e pipeline sincronizados</li>
+          </ul>
         </div>
-        <ul className="login-page__brand-list">
-          <li>Rota do dia e paradas no mapa</li>
-          <li>Kit comercial em 4 fases</li>
-          <li>Propostas e pipeline sincronizados</li>
-        </ul>
       </section>
 
       <div className="login-page__form-wrap">
-        <Card elevated className="login-card glass-panel">
-          <RgLogo variant="compact" subtitle="Acesse sua conta" className="login-card__logo" />
+        <div className="login-page__form-inner">
+          <header className="login-page__mobile-brand">
+            <RgLogo variant="wordmark" subtitle="Consultor de campo" />
+          </header>
 
-          <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="field">
-              <label htmlFor="email">E-mail</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vendedor@rg.com"
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="password">Senha</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {error ? <div className="banner banner--error">{error}</div> : null}
-            <Button type="submit" variant="primary" fullWidth disabled={busy}>
-              {busy ? 'Entrando…' : 'Entrar no sistema'}
-            </Button>
-          </form>
+          <Card elevated className="login-card glass-panel">
+            <header className="login-card__head">
+              <RgLogo variant="compact" subtitle="Acesse sua conta" className="login-card__logo" />
+            </header>
 
-          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ink-muted)', textAlign: 'center' }}>
-            {authHint()}
-          </p>
-          {isApiEnabled() ? (
-            <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: 'var(--ink-faint)', textAlign: 'center' }}>
-              Servidor: {getApiBaseUrl()}
-            </p>
-          ) : null}
-          <p style={{ margin: '12px 0 0', fontSize: '0.85rem', textAlign: 'center' }}>
-            <Link to="/instalar" className="install-link">Instalar no tablet ou celular</Link>
-          </p>
-        </Card>
+            <form className="login-card__form" onSubmit={onSubmit}>
+              <div className="field">
+                <label htmlFor="email">E-mail</label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="vendedor@rg.com"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="password">Senha</label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </div>
+              {error ? <div className="banner banner--error">{error}</div> : null}
+              <Button type="submit" variant="primary" fullWidth disabled={busy}>
+                {busy ? 'Entrando…' : 'Entrar no sistema'}
+              </Button>
+            </form>
+
+            <footer className="login-card__foot">
+              <p className="login-card__hint">{authHint()}</p>
+              {isApiEnabled() ? (
+                <p className="login-card__meta">Servidor: {getApiBaseUrl()}</p>
+              ) : null}
+              <Link to="/instalar" className="login-card__install">
+                Instalar no tablet ou celular
+              </Link>
+            </footer>
+          </Card>
+        </div>
       </div>
     </div>
   );

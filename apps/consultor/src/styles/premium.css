@@ -337,7 +337,8 @@
 }
 
 .login-card.glass-panel {
-  border-radius: var(--radius-xl);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
 }
 
 /* ——— Premium nav indicator ——— */

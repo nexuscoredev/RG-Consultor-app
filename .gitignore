@@ -42,3 +42,4 @@ mobile/android/
 
 # API demo persistence (local dev)
 apps/api/data/
+.vercel
