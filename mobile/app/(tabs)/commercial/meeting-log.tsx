@@ -4,8 +4,11 @@ import { HapticPressable } from '@/components/ui/HapticPressable';
 import { Surface } from '@/components/ui/Surface';
 import { space, tabBarFloatingClearance } from '@/constants/layout';
 import { useGamification } from '@/context/GamificationContext';
+import { useSync } from '@/context/SyncContext';
+import { afterCommercialEnqueue } from '@/lib/commercialSync';
 import { recordPipelineStep } from '@/lib/gamificationEngine';
 import {
+  COMMERCIAL_HISTORY_UI_PAGE,
   loadMeetingLogs,
   saveMeetingLogs,
   type MeetingLogEntry,
@@ -14,8 +17,10 @@ import { syncMeetingLogToPipeline } from '@/lib/localPipelineStore';
 import { enqueueMeetingLog } from '@/lib/outbox';
 import { t } from '@/lib/i18n';
 import { Link, useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function newId() {
@@ -28,16 +33,20 @@ export default function MeetingLogScreen() {
   const insets = useSafeAreaInsets();
   const pad = tabBarFloatingClearance(insets.bottom);
   const { refresh: refreshGamification } = useGamification();
+  const sync = useSync();
   const router = useRouter();
   const params = useLocalSearchParams<{ client?: string | string[] }>();
+  const initialClient = useMemo(() => {
+    const raw = params.client;
+    const s = Array.isArray(raw) ? raw[0] : raw;
+    return s ? decodeURIComponent(s) : '';
+  }, [params.client]);
   const [entries, setEntries] = useState<MeetingLogEntry[]>([]);
   const [client, setClient] = useState('');
 
   useEffect(() => {
-    const raw = params.client;
-    const s = Array.isArray(raw) ? raw[0] : raw;
-    if (s) setClient(decodeURIComponent(s));
-  }, [params.client]);
+    if (initialClient) setClient((c) => c || initialClient);
+  }, [initialClient]);
   const [notes, setNotes] = useState('');
   const [nextAction, setNextAction] = useState('');
   const [nextDate, setNextDate] = useState('');
@@ -69,9 +78,10 @@ export default function MeetingLogScreen() {
       nextAction: row.nextAction,
       nextDate: row.nextDate,
     });
+    afterCommercialEnqueue(sync);
     recordPipelineStep('outro');
     refreshGamification();
-    setClient('');
+    setClient(initialClient || row.client);
     setNotes('');
     setNextAction('');
     setNextDate('');
@@ -82,10 +92,10 @@ export default function MeetingLogScreen() {
         onPress: () => router.push('/(tabs)/commercial/pipeline' as Href),
       },
     ]);
-  }, [ML, client, notes, nextAction, nextDate, entries, refreshGamification, router]);
+  }, [ML, client, notes, nextAction, nextDate, entries, refreshGamification, router, sync, initialClient]);
 
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       <Text style={[styles.intro, { color: p.textSecondary }]}>{ML.intro}</Text>
 
       <Surface elevated style={[styles.form, { borderColor: p.border }]}>
@@ -108,7 +118,15 @@ export default function MeetingLogScreen() {
       {entries.length === 0 ? (
         <Text style={{ color: p.textSecondary }}>{ML.empty}</Text>
       ) : (
-        entries.map((e) => (
+        <>
+          {entries.length > COMMERCIAL_HISTORY_UI_PAGE ? (
+            <Text style={{ color: p.textSecondary, fontSize: 13 }}>
+              {ML.historyShown
+                .replace('{shown}', String(COMMERCIAL_HISTORY_UI_PAGE))
+                .replace('{total}', String(entries.length))}
+            </Text>
+          ) : null}
+          {entries.slice(0, COMMERCIAL_HISTORY_UI_PAGE).map((e) => (
           <Surface key={e.id} style={[styles.card, { borderColor: p.border }]}>
             <Text style={[styles.date, { color: p.textSecondary }]}>
               {new Date(e.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
@@ -122,9 +140,10 @@ export default function MeetingLogScreen() {
               </Text>
             ) : null}
           </Surface>
-        ))
+          ))}
+        </>
       )}
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
@@ -141,6 +160,7 @@ function Field({
   p: (typeof Colors)['light'];
   multiline?: boolean;
 }) {
+  const { isTablet } = useTabletLayout();
   return (
     <View style={{ gap: 4 }}>
       <Text style={{ color: p.textSecondary, fontSize: 12, fontWeight: '700' }}>{label}</Text>
@@ -151,8 +171,9 @@ function Field({
         multiline={multiline}
         style={[
           styles.input,
+          isTablet && styles.inputTablet,
           { borderColor: p.border, color: p.text, backgroundColor: p.card },
-          multiline ? { minHeight: 88, textAlignVertical: 'top' } : null,
+          multiline ? { minHeight: isTablet ? 120 : 88, textAlignVertical: 'top' } : null,
         ]}
       />
     </View>
@@ -160,7 +181,8 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: space.md },
+  root: { gap: space.md },
+  inputTablet: { minHeight: 52, fontSize: 16 },
   intro: { fontSize: 14, lineHeight: 20 },
   form: { padding: space.md, borderRadius: 16, borderWidth: 1, gap: 12 },
   h: { fontSize: 17, fontWeight: '900' },

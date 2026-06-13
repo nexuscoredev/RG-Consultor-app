@@ -48,6 +48,38 @@
   color: #008d4c;
 }
 
+.alertList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alertItem {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.alert-warning {
+  border-left: 4px solid #d97706;
+}
+
+.alert-danger {
+  border-left: 4px solid #dc2626;
+}
+
+.alert-info {
+  border-left: 4px solid #008d4c;
+}
+
 .heatmapSection {
   margin: 8px 0 24px;
   padding: 20px;

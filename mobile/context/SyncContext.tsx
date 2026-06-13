@@ -1,10 +1,14 @@
 import * as Network from 'expo-network';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import { isApiEnabled } from '@/lib/apiConfig';
 import { countFailedOutbox, countPendingOutbox, processOutboxSync, resetFailedToPending } from '@/lib/outbox';
 
 export type SyncStatus = 'idle' | 'offline' | 'syncing' | 'error';
+
+/** Sincronização periódica só com app em primeiro plano (economia de bateria). */
+const SYNC_INTERVAL_MS = 120_000;
 
 type SyncContextValue = {
   status: SyncStatus;
@@ -23,6 +27,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState(0);
   const [failed, setFailed] = useState(0);
   const [lastMessage, setLastMessage] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshCounts = useCallback(() => {
     setPending(countPendingOutbox());
@@ -38,6 +43,17 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       refreshCounts();
       return;
     }
+    refreshCounts();
+    const pendingNow = countPendingOutbox();
+    if (!isApiEnabled()) {
+      setStatus('idle');
+      setLastMessage(
+        pendingNow > 0
+          ? `${pendingNow} evento(s) salvos neste aparelho — aguardando servidor.`
+          : null,
+      );
+      return;
+    }
     setStatus('syncing');
     const { synced, error } = await processOutboxSync();
     refreshCounts();
@@ -46,7 +62,17 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       setLastMessage(error);
     } else {
       setStatus('idle');
-      setLastMessage(synced ? `${synced} evento(s) sincronizado(s).` : 'Fila vazia.');
+      const stillPending = countPendingOutbox();
+      setLastMessage(
+        synced > 0
+          ? `${synced} evento(s) sincronizado(s).`
+          : stillPending > 0
+            ? `${stillPending} evento(s) na fila.`
+            : null,
+      );
+      if (synced > 0) {
+        void import('@/lib/clientRegistry').then((m) => m.hydrateClientsFromApi());
+      }
     }
   }, [refreshCounts]);
 
@@ -56,23 +82,42 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     void runSyncNow();
   }, [refreshCounts, runSyncNow]);
 
-  useEffect(() => {
-    refreshCounts();
-    const interval = setInterval(() => {
-      void runSyncNow();
-    }, 90_000);
-    return () => clearInterval(interval);
-  }, [refreshCounts, runSyncNow]);
+  const stopPoll = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const startPoll = useCallback(() => {
+    if (pollRef.current) return;
+    pollRef.current = setInterval(() => {
+      if (AppState.currentState === 'active') void runSyncNow();
+    }, SYNC_INTERVAL_MS);
+  }, [runSyncNow]);
 
   useEffect(() => {
+    refreshCounts();
+    if (AppState.currentState === 'active') {
+      void runSyncNow();
+      startPoll();
+    }
+
     const sub = AppState.addEventListener('change', (s: AppStateStatus) => {
       if (s === 'active') {
         refreshCounts();
         void runSyncNow();
+        startPoll();
+      } else {
+        stopPoll();
       }
     });
-    return () => sub.remove();
-  }, [refreshCounts, runSyncNow]);
+
+    return () => {
+      sub.remove();
+      stopPoll();
+    };
+  }, [refreshCounts, runSyncNow, startPoll, stopPoll]);
 
   const value = useMemo(
     () => ({ status, pending, failed, lastMessage, refreshCounts, runSyncNow, retryFailed }),

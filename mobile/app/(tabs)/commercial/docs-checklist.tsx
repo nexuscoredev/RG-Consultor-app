@@ -10,7 +10,9 @@ import { clientStorageKey, parseCommercialContext } from '@/lib/commercialLinks'
 import { loadDocsChecklist, saveDocsChecklist, type DocsChecklistState } from '@/lib/commercialStorage';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function DocsChecklistScreen() {
@@ -41,9 +43,10 @@ export default function DocsChecklistScreen() {
   );
 
   const done = DOCS_CHECKLIST.filter((d) => state[d.id]).length;
+  const { isTablet } = useTabletLayout();
 
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       {ctx.company ? (
         <Text style={[styles.client, { color: p.tint }]}>{ctx.company}</Text>
       ) : null}
@@ -63,7 +66,7 @@ export default function DocsChecklistScreen() {
               style={styles.hit}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}>
-              <View style={[styles.box, { borderColor: on ? p.tint : p.border, backgroundColor: on ? `${p.tint}18` : p.card }]}>
+              <View style={[styles.box, isTablet && styles.boxTablet, { borderColor: on ? p.tint : p.border, backgroundColor: on ? `${p.tint}18` : p.card }]}>
                 {on ? <Text style={{ color: p.tint, fontWeight: '900' }}>✓</Text> : null}
               </View>
               <Text style={[styles.label, { color: p.text }]}>{d.label}</Text>
@@ -71,12 +74,13 @@ export default function DocsChecklistScreen() {
           </Surface>
         );
       })}
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: 10 },
+  root: { gap: 10 },
+  boxTablet: { width: 32, height: 32 },
   client: { fontSize: 17, fontWeight: '900' },
   intro: { fontSize: 14, lineHeight: 20 },
   progress: { fontSize: 15, fontWeight: '800', marginBottom: 4 },

@@ -2,6 +2,7 @@ import Colors from '@/constants/Colors';
 import { radius, space } from '@/constants/layout';
 import { useColorScheme } from '@/components/useColorScheme';
 import { RgConsultorLogo } from '@/components/RgConsultorLogo';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { BlurView } from 'expo-blur';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
@@ -16,6 +17,7 @@ export function HomeHeroGlass({ dateLabel }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const p = Colors[scheme];
   const isDark = scheme === 'dark';
+  const { isTablet } = useTabletLayout();
 
   const glassFill =
     Platform.OS === 'android'
@@ -50,8 +52,12 @@ export function HomeHeroGlass({ dateLabel }: Props) {
         ]}
       />
       <View style={styles.inner}>
-        <Text style={[styles.date, { color: p.textSecondary }]}>{dateLabel}</Text>
-        <RgConsultorLogo variant="home" subtitle="Sua central do dia — visitas, metas e conteúdo para o cliente." />
+        <Text style={[styles.date, isTablet && styles.dateTablet, { color: p.textSecondary }]}>
+          {dateLabel}
+        </Text>
+        <View style={styles.logoSlot}>
+          <RgConsultorLogo variant="home" subtitle="Sua central do dia — visitas, metas e conteúdo para o cliente." />
+        </View>
       </View>
     </View>
   );
@@ -70,13 +76,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingTop: space.sm,
     paddingBottom: space.lg,
+    alignItems: 'center',
   },
+  dateTablet: { fontSize: 16, marginBottom: space.md },
   date: {
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'capitalize',
     letterSpacing: 0.2,
-    marginBottom: 4,
-    alignSelf: 'center',
+    marginBottom: space.sm,
+    textAlign: 'center',
+    width: '100%',
+  },
+  logoSlot: {
+    width: '100%',
+    alignItems: 'center',
   },
 });

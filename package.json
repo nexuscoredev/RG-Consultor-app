@@ -5,12 +5,37 @@
     "mobile",
     "packages/shared",
     "apps/admin",
-    "apps/api"
+    "apps/api",
+    "apps/consultor"
   ],
   "scripts": {
+    "dev": "concurrently -n api,app -c blue,green \"npm run api\" \"npm run consultor\"",
+    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/restart-dev.ps1",
+    "consultor": "npm run dev --workspace=consultor",
+    "consultor:build": "npm run build --workspace=consultor",
+    "consultor:preview": "npm run preview --workspace=consultor",
+    "consultor:check": "npm run check --workspace=consultor",
+    "consultor:smoke": "npm run smoke --workspace=consultor",
+    "web": "npm run start:web --workspace=mobile",
+    "web:build": "npm run build:web --workspace=mobile",
     "mobile": "npm run start --workspace=mobile",
+    "mobile:native": "npm run start --workspace=mobile",
+    "mobile:web": "npm run start:web --workspace=mobile",
+    "mobile:tunnel": "npm run start:tunnel --workspace=mobile",
+    "mobile:check": "npm run check --workspace=mobile",
     "admin": "npm run dev --workspace=admin",
     "api": "npm run dev --workspace=@rg-ambiental/api",
+    "api:check": "npm run check --workspace=@rg-ambiental/api",
+    "api:smoke": "node apps/api/scripts/smoke.mjs",
     "test:geo": "npm run test --workspace=mobile"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  },
+  "overrides": {
+    "consultor": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0"
+    }
   }
 }

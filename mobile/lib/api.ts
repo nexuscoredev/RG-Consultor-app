@@ -3,12 +3,24 @@ import type { RotaDia } from '@rg-ambiental/shared';
 import { apiFetch } from '@/lib/apiClient';
 import { isApiEnabled } from '@/lib/apiConfig';
 
+import type { CommercialPhase } from '@/lib/commercialFunnel';
+
 export type PipelineRow = {
+  id: string;
   account: string;
   stage: string;
+  phase: CommercialPhase;
   owner: string;
   value: string;
   docPending?: string;
+  updatedAt: number;
+};
+
+export type MgmtAlert = {
+  id: string;
+  severity: 'info' | 'warning' | 'danger';
+  title: string;
+  body: string;
 };
 
 export type MasterDashboardData = {
@@ -49,26 +61,36 @@ async function fetchRouteDayMock(date: string): Promise<RotaDia> {
 
 async function fetchPipelineMock(): Promise<PipelineRow[]> {
   await new Promise((r) => setTimeout(r, 80));
+  const now = Date.now();
   return [
     {
+      id: 'mock-metalurgica',
       account: 'Metalúrgica Horizonte',
       stage: 'Diagnóstico resíduos classe I',
+      phase: 'prospecting',
       owner: 'Você',
       value: 'R$ 180k ARR estimado',
       docPending: 'Licença de operação',
+      updatedAt: now - 86_400_000,
     },
     {
+      id: 'mock-andorinha',
       account: 'Química Andorinha',
       stage: 'Proposta — logística reversa',
+      phase: 'proposal',
       owner: 'Você',
       value: 'Aguardando MTR',
       docPending: 'MTR em análise',
+      updatedAt: now - 43_200_000,
     },
     {
+      id: 'mock-foodco',
       account: 'FoodCo Brasil',
       stage: 'Renovação anual',
+      phase: 'contract',
       owner: 'CS — Patrícia',
       value: 'Contrato ativo',
+      updatedAt: now - 10_800_000,
     },
   ];
 }
@@ -86,4 +108,34 @@ export async function fetchPipeline(): Promise<PipelineRow[]> {
 
 export async function fetchMasterDashboard(): Promise<MasterDashboardData> {
   return apiFetch<MasterDashboardData>('/master/dashboard', { token: token() });
+}
+
+export async function fetchMgmtAlerts(): Promise<MgmtAlert[]> {
+  if (!isApiEnabled()) return [];
+  const data = await apiFetch<{ items: MgmtAlert[] }>('/master/alerts', { token: token() });
+  return data.items;
+}
+
+export async function fetchSellerAlerts(): Promise<MgmtAlert[]> {
+  if (!isApiEnabled()) return [];
+  const data = await apiFetch<{ items: MgmtAlert[] }>('/me/alerts', { token: token() });
+  return data.items;
+}
+
+export type ApiClientRow = {
+  id: string;
+  company: string;
+  contactName: string;
+  segment?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  cnpj?: string;
+  updatedAt: number;
+};
+
+export async function fetchClients(): Promise<ApiClientRow[]> {
+  if (!isApiEnabled()) return [];
+  const data = await apiFetch<{ rows: ApiClientRow[] }>('/me/clients', { token: token() });
+  return data.rows ?? [];
 }

@@ -1,0 +1,19 @@
+{
+  "name": "RG Consultor",
+  "short_name": "RG Consultor",
+  "description": "Visitas, funil comercial e pipeline de campo",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#047857",
+  "icons": [
+    {
+      "src": "/images/rg-ambiental-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

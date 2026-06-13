@@ -39,7 +39,24 @@ export function PipelineSummaryCard() {
   );
 
   const open = countOpenPipeline(rows);
-  if (open === 0) return null;
+  if (open === 0) {
+    return (
+      <View style={[styles.wrap, { backgroundColor: p.card, borderColor: p.border }]}>
+        <View style={styles.head}>
+          <MaterialCommunityIcons name="chart-timeline-variant" size={22} color={p.textSecondary} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: p.text }]}>{H.pipelineTitle}</Text>
+            <Text style={[styles.sub, { color: p.textSecondary }]}>{H.pipelineEmpty}</Text>
+          </View>
+        </View>
+        <Link href={'/(tabs)/commercial/clients?new=1' as Href} asChild>
+          <HapticPressable style={[styles.cta, { borderColor: p.tint }]} accessibilityRole="button">
+            <Text style={[styles.ctaText, { color: p.tint }]}>{H.pipelineAddClient}</Text>
+          </HapticPressable>
+        </Link>
+      </View>
+    );
+  }
 
   const preview = rows.filter((r) => !/contrato ativo|renovação anual/i.test(r.stage)).slice(0, 2);
 

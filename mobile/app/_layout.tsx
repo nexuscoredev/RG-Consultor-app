@@ -14,6 +14,7 @@ if (Platform.OS !== 'web') {
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AppThemeProvider } from '@/context/AppThemeContext';
+import { AuthSessionBridge } from '@/components/AuthSessionBridge';
 import { AuthProvider } from '@/context/AuthContext';
 import { DemoGpsProvider } from '@/context/DemoGpsContext';
 import { GamificationProvider } from '@/context/GamificationContext';
@@ -124,6 +125,7 @@ function RootLayoutNav() {
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <OtaUpdateBanner />
       <AuthProvider>
+        <AuthSessionBridge />
         <DemoGpsProvider>
           <SyncProvider>
             <GamificationProvider>

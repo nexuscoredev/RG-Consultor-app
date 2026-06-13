@@ -75,6 +75,55 @@ export function enqueueContractClosed(payload: {
   return insertOutbox('CONTRACT_CLOSED', payload);
 }
 
+export function enqueueProspectingSaved(payload: {
+  company: string;
+  segment: string;
+  source: string;
+  contactName: string;
+}): string {
+  return insertOutbox('PROSPECTING_SAVED', payload);
+}
+
+export function enqueueProposalAccepted(payload: {
+  company: string;
+  proposalNumber: string;
+  acceptedValue: string;
+  acceptanceType: string;
+}): string {
+  return insertOutbox('PROPOSAL_ACCEPTED', payload);
+}
+
+export function enqueueClientSaved(payload: {
+  id: string;
+  company: string;
+  contactName: string;
+  segment?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  cnpj?: string;
+}): string {
+  return insertOutbox('CLIENT_SAVED', payload);
+}
+
+export function enqueueFollowUpSent(payload: {
+  company: string;
+  contactName?: string;
+  channel: 'email' | 'whatsapp' | 'copy';
+  phase?: string;
+}): string {
+  return insertOutbox('FOLLOW_UP_SENT', payload);
+}
+
+export function purgeSyncedOutbox(olderThanMs = 7 * 24 * 3600_000): number {
+  const database = getDb();
+  const cutoff = Date.now() - olderThanMs;
+  const before = database.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM outbox WHERE status = 'synced'`);
+  database.runSync(`DELETE FROM outbox WHERE status = 'synced' AND created_at < ?`, cutoff);
+  const after = database.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM outbox WHERE status = 'synced'`);
+  return (before?.c ?? 0) - (after?.c ?? 0);
+}
+
 export function countPendingOutbox(): number {
   const database = getDb();
   const row = database.getFirstSync<{ c: number }>(
@@ -114,15 +163,28 @@ function backoffMs(retries: number): number {
   return Math.min(cap, base * Math.pow(2, Math.max(0, retries)));
 }
 
-async function syncRowToApi(row: OutboxRow, authToken: string): Promise<void> {
-  const payload = JSON.parse(row.payload) as unknown;
-  await apiFetch<{ accepted: string[] }>('/sync/events', {
+type SyncEventsResponse = {
+  accepted: string[];
+  rejected: { id: string; reason: string }[];
+};
+
+async function syncBatchToApi(rows: OutboxRow[], authToken: string): Promise<void> {
+  const events = rows.map((row) => ({
+    id: row.id,
+    type: row.type,
+    payload: JSON.parse(row.payload) as unknown,
+    createdAt: row.created_at,
+  }));
+  const result = await apiFetch<SyncEventsResponse>('/sync/events', {
     method: 'POST',
     token: authToken,
-    body: {
-      events: [{ id: row.id, type: row.type, payload, createdAt: row.created_at }],
-    },
+    body: { events },
   });
+  for (const row of rows) {
+    const rejection = result.rejected?.find((r) => r.id === row.id);
+    if (rejection) throw new Error(rejection.reason || 'sync_rejected');
+    if (!result.accepted?.includes(row.id)) throw new Error('sync_not_accepted');
+  }
 }
 
 function markSynced(database: ReturnType<typeof getDb>, id: string): void {
@@ -170,22 +232,30 @@ export async function processOutboxSync(): Promise<{ synced: number; error?: str
 
   let synced = 0;
   let lastErr: string | undefined;
+  const BATCH = 8;
 
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const chunk = rows.slice(i, i + BATCH);
     try {
-      if (useApi) {
-        await syncRowToApi(row, authToken);
-      } else {
-        await new Promise((r) => setTimeout(r, 25));
+      if (!useApi) {
+        lastErr = 'api_offline';
+        continue;
       }
-      markSynced(database, row.id);
-      synced += 1;
+      await syncBatchToApi(chunk, authToken);
+      for (const row of chunk) {
+        markSynced(database, row.id);
+        synced += 1;
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'sync_error';
-      markFailed(database, row, msg);
+      for (const row of chunk) {
+        markFailed(database, row, msg);
+      }
       lastErr = msg;
     }
   }
+
+  if (synced > 0) purgeSyncedOutbox();
 
   return { synced, error: lastErr };
 }

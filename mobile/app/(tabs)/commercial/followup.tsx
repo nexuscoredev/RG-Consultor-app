@@ -1,16 +1,24 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { HapticPressable } from '@/components/ui/HapticPressable';
 import { Surface } from '@/components/ui/Surface';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
 import { space, tabBarFloatingClearance } from '@/constants/layout';
+import { useSync } from '@/context/SyncContext';
+import { afterCommercialEnqueue } from '@/lib/commercialSync';
 import { FOLLOWUP_EMAIL, FOLLOWUP_WHATSAPP } from '@/lib/commercialContent';
+import { syncFollowupToPipeline } from '@/lib/localPipelineStore';
+import { enqueueFollowUpSent } from '@/lib/outbox';
 import { whatsAppUrl } from '@/lib/proposalTemplate';
 import { t } from '@/lib/i18n';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function fill(template: string, vars: Record<string, string>) {
@@ -31,19 +39,41 @@ export default function FollowupScreen() {
   const F = t('followup');
   const insets = useSafeAreaInsets();
   const pad = tabBarFloatingClearance(insets.bottom);
-  const params = useLocalSearchParams<{ nome?: string | string[]; empresa?: string | string[]; phone?: string | string[] }>();
-  const [nome, setNome] = useState('Maria');
-  const [empresa, setEmpresa] = useState('ACME Indústria');
+  const sync = useSync();
+  const params = useLocalSearchParams<{
+    nome?: string | string[];
+    empresa?: string | string[];
+    phone?: string | string[];
+    routeDate?: string | string[];
+    stopId?: string | string[];
+    address?: string | string[];
+    city?: string | string[];
+  }>();
+  const [nome, setNome] = useState('');
+  const [empresa, setEmpresa] = useState('');
   const [phone, setPhone] = useState('');
+  const [routeDate, setRouteDate] = useState('');
+  const [stopId, setStopId] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const ns = paramOne(params.nome);
     const es = paramOne(params.empresa);
     const ps = paramOne(params.phone);
+    const rd = paramOne(params.routeDate);
+    const sid = paramOne(params.stopId);
+    const ad = paramOne(params.address);
+    const ct = paramOne(params.city);
     if (ns) setNome(ns);
     if (es) setEmpresa(es);
     if (ps) setPhone(ps);
-  }, [params.nome, params.empresa, params.phone]);
+    if (rd) setRouteDate(rd);
+    if (sid) setStopId(sid);
+    if (ad) setAddress(ad);
+    if (ct) setCity(ct);
+  }, [params.nome, params.empresa, params.phone, params.routeDate, params.stopId, params.address, params.city]);
 
   const [escopo, setEscopo] = useState('Gerenciamento de resíduos classe II — coleta 2x/semana');
   const [passo, setPasso] = useState('Enviar proposta formal com SLA');
@@ -63,8 +93,38 @@ export default function FollowupScreen() {
     void Linking.openURL(whatsAppUrl(waBody, phone.trim() || undefined));
   }, [waBody, phone]);
 
+  const saveToPipeline = useCallback(async () => {
+    if (!empresa.trim()) return;
+    setSaving(true);
+    try {
+      await syncFollowupToPipeline({
+        company: empresa.trim(),
+        nextStep: passo.trim() || 'Follow-up enviado',
+        deadline: prazo.trim(),
+        visit: {
+          routeDate: routeDate || undefined,
+          stopId: stopId || undefined,
+          contact: nome.trim() || undefined,
+          address: address || undefined,
+          city: city || undefined,
+          phone: phone.trim() || undefined,
+        },
+      });
+      enqueueFollowUpSent({
+        company: empresa.trim(),
+        contactName: nome.trim() || undefined,
+        channel: 'copy',
+        phase: 'proposal',
+      });
+      afterCommercialEnqueue(sync);
+      Alert.alert(F.savedPipelineTitle, F.savedPipelineBody);
+    } finally {
+      setSaving(false);
+    }
+  }, [address, city, empresa, nome, passo, phone, prazo, routeDate, stopId, sync, F]);
+
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       <Text style={[styles.intro, { color: p.textSecondary }]}>{F.intro}</Text>
 
       <Surface style={[styles.form, { borderColor: p.border }]}>
@@ -101,7 +161,19 @@ export default function FollowupScreen() {
           </HapticPressable>
         </View>
       </Surface>
-    </ScrollView>
+
+      <PrimaryButton
+        fullWidth
+        label={F.savePipeline}
+        onPress={() => void saveToPipeline()}
+        loading={saving}
+        disabled={saving}
+        accessibilityLabel={F.savePipelineA11y}
+      />
+      <Link href={'/(tabs)/commercial/pipeline' as Href} asChild>
+        <SecondaryButton fullWidth tint label={F.viewPipeline} accessibilityLabel={F.viewPipelineA11y} />
+      </Link>
+    </TabletScrollScreen>
   );
 }
 
@@ -120,6 +192,7 @@ function Mini({
   multiline?: boolean;
   keyboardType?: 'default' | 'phone-pad';
 }) {
+  const { isTablet } = useTabletLayout();
   return (
     <View style={{ gap: 4 }}>
       <Text style={{ color: p.textSecondary, fontSize: 11, fontWeight: '700' }}>{label}</Text>
@@ -131,8 +204,9 @@ function Mini({
         keyboardType={keyboardType}
         style={[
           styles.input,
+          isTablet && styles.inputTablet,
           { borderColor: p.border, color: p.text, backgroundColor: p.card },
-          multiline ? { minHeight: 64, textAlignVertical: 'top' } : null,
+          multiline ? { minHeight: isTablet ? 88 : 64, textAlignVertical: 'top' } : null,
         ]}
       />
     </View>
@@ -140,7 +214,8 @@ function Mini({
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: space.md },
+  root: { gap: space.md },
+  inputTablet: { minHeight: 52, fontSize: 16, paddingVertical: 12 },
   intro: { fontSize: 14, lineHeight: 20 },
   form: { padding: space.md, borderRadius: 16, borderWidth: 1, gap: 10 },
   h: { fontSize: 16, fontWeight: '900' },

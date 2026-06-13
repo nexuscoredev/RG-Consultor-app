@@ -82,6 +82,61 @@ export const RankingEntrySchema = z.object({
   rank: z.number().int().positive(),
 });
 
+export const MeetingLogPayloadSchema = z.object({
+  client: z.string().min(1),
+  notes: z.string(),
+  nextAction: z.string(),
+  nextDate: z.string(),
+});
+
+export const ProposalSentPayloadSchema = z.object({
+  company: z.string().min(1),
+  clientName: z.string(),
+  value: z.string(),
+  proposalNumber: z.string(),
+  scope: z.string().optional(),
+});
+
+export const ContractClosedPayloadSchema = z.object({
+  company: z.string().min(1),
+  cnpj: z.string(),
+  service: z.string(),
+  value: z.string(),
+  term: z.string(),
+});
+
+export const ProspectingSavedPayloadSchema = z.object({
+  company: z.string().min(1),
+  segment: z.string(),
+  source: z.string(),
+  contactName: z.string(),
+});
+
+export const ProposalAcceptedPayloadSchema = z.object({
+  company: z.string().min(1),
+  proposalNumber: z.string(),
+  acceptedValue: z.string(),
+  acceptanceType: z.string(),
+});
+
+export const ClientSavedPayloadSchema = z.object({
+  id: z.string().min(1),
+  company: z.string().min(1),
+  contactName: z.string(),
+  segment: z.string().optional(),
+  city: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  cnpj: z.string().optional(),
+});
+
+export const FollowUpSentPayloadSchema = z.object({
+  company: z.string().min(1),
+  contactName: z.string().optional(),
+  channel: z.enum(["email", "whatsapp", "copy"]),
+  phase: z.string().optional(),
+});
+
 export const OutboxEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("CHECK_IN"),
@@ -99,6 +154,48 @@ export const OutboxEventSchema = z.discriminatedUnion("type", [
     type: z.literal("LOCATION_BATCH"),
     id: z.string().uuid(),
     payload: z.object({ pings: z.array(PositionPingSchema) }),
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("MEETING_LOG"),
+    id: z.string().uuid(),
+    payload: MeetingLogPayloadSchema,
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("PROPOSAL_SENT"),
+    id: z.string().uuid(),
+    payload: ProposalSentPayloadSchema,
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("CONTRACT_CLOSED"),
+    id: z.string().uuid(),
+    payload: ContractClosedPayloadSchema,
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("PROSPECTING_SAVED"),
+    id: z.string().uuid(),
+    payload: ProspectingSavedPayloadSchema,
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("PROPOSAL_ACCEPTED"),
+    id: z.string().uuid(),
+    payload: ProposalAcceptedPayloadSchema,
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("CLIENT_SAVED"),
+    id: z.string().min(1),
+    payload: ClientSavedPayloadSchema,
+    createdAt: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("FOLLOW_UP_SENT"),
+    id: z.string().min(1),
+    payload: FollowUpSentPayloadSchema,
     createdAt: z.number().int(),
   }),
 ]);

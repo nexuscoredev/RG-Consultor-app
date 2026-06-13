@@ -1,6 +1,7 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { HapticPressable } from '@/components/ui/HapticPressable';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { button, radius } from '@/constants/layout';
 import { typography } from '@/constants/typography';
 import { forwardRef, type ReactNode } from 'react';
@@ -20,6 +21,7 @@ export const SecondaryButton = forwardRef<View, Props>(function SecondaryButton(
   ref,
 ) {
   const p = Colors[useColorScheme() ?? 'light'];
+  const { touchMinHeight } = useTabletLayout();
   const labelColor = tint ? p.tint : p.text;
 
   return (
@@ -30,6 +32,7 @@ export const SecondaryButton = forwardRef<View, Props>(function SecondaryButton(
       accessibilityLabel={accessibilityLabel ?? label}
       style={[
         styles.base,
+        { minHeight: touchMinHeight },
         fullWidth && styles.fullWidth,
         { borderColor: tint ? p.tint : p.border, opacity: disabled || loading ? 0.55 : 1 },
         style as ViewStyle,

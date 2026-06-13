@@ -3,16 +3,19 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { Surface } from '@/components/ui/Surface';
 import { space, tabBarFloatingClearance } from '@/constants/layout';
 import { COMPARE_ROWS } from '@/lib/commercialContent';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CompareScreen() {
   const p = Colors[useColorScheme() ?? 'light'];
   const insets = useSafeAreaInsets();
   const pad = tabBarFloatingClearance(insets.bottom);
+  const { isTablet } = useTabletLayout();
 
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       <Text style={[styles.intro, { color: p.textSecondary }]}>
         Use como conversa guiada — não é slide; é para alinhar valor com o decisor.
       </Text>
@@ -24,18 +27,19 @@ export default function CompareScreen() {
         </View>
         {COMPARE_ROWS.map((row) => (
           <View key={row.aspect} style={[styles.row, { borderBottomColor: p.border }]}>
-            <Text style={[styles.cell, { color: p.text, fontWeight: '800', flex: 1.1 }]}>{row.aspect}</Text>
-            <Text style={[styles.cell, { color: p.textSecondary, flex: 1 }]}>{row.sem}</Text>
-            <Text style={[styles.cell, { color: p.text, flex: 1 }]}>{row.com}</Text>
+            <Text style={[styles.cell, isTablet && styles.cellTablet, { color: p.text, fontWeight: '800', flex: 1.1 }]}>{row.aspect}</Text>
+            <Text style={[styles.cell, isTablet && styles.cellTablet, { color: p.textSecondary, flex: 1 }]}>{row.sem}</Text>
+            <Text style={[styles.cell, isTablet && styles.cellTablet, { color: p.text, flex: 1 }]}>{row.com}</Text>
           </View>
         ))}
       </Surface>
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: space.md },
+  root: { gap: space.md },
+  cellTablet: { fontSize: 15, lineHeight: 22 },
   intro: { fontSize: 14, lineHeight: 20 },
   table: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   head: { flexDirection: 'row', borderBottomWidth: 1, paddingVertical: 10, paddingHorizontal: 8, gap: 6 },

@@ -1,0 +1,167 @@
+/* Ultra polish — logo hero, depth, Apple-grade refinement */
+
+:root {
+  --touch-tablet: 52px;
+  --logo-glow: rgba(52, 211, 153, 0.35);
+  --logo-glow-soft: rgba(52, 211, 153, 0.12);
+}
+
+[data-theme='dark'] {
+  --logo-glow: rgba(52, 211, 153, 0.45);
+  --logo-glow-soft: rgba(52, 211, 153, 0.18);
+}
+
+/* ——— Logo mark ——— */
+.rg-logo__mark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rg-logo__glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at center, var(--logo-glow-soft) 0%, transparent 70%);
+  filter: blur(8px);
+  z-index: 0;
+}
+
+.rg-logo__mark img {
+  position: relative;
+  z-index: 1;
+}
+
+.rg-logo__img--hero {
+  width: min(420px, 88vw);
+  height: auto;
+  filter: drop-shadow(0 12px 32px rgba(4, 120, 87, 0.22));
+}
+
+.rg-logo__img--wordmark {
+  width: min(320px, 78vw);
+}
+
+.rg-logo__img--compact {
+  width: 132px;
+}
+
+.rg-logo__img--sidebar {
+  width: 100%;
+  max-width: 260px;
+}
+
+.rg-logo--shell .rg-logo__img--sidebar {
+  max-width: 280px;
+}
+
+.rg-logo--hero {
+  gap: var(--space-5);
+}
+
+.rg-logo__product {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.rg-logo__product--sidebar {
+  font-size: 1.15rem;
+  margin-top: var(--space-2);
+}
+
+/* ——— Login hero ——— */
+.login-page__brand .rg-logo--hero {
+  margin-bottom: var(--space-4);
+}
+
+.login-page__brand-title {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+}
+
+.login-card {
+  border-radius: 20px;
+}
+
+/* ——— Sidebar brand block ——— */
+.app-shell__sidebar .rg-logo--sidebar {
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
+  border-bottom: none;
+  background: linear-gradient(180deg, var(--logo-glow-soft) 0%, transparent 85%);
+  border-radius: 16px;
+  padding: var(--space-4);
+}
+
+/* ——— Cards & depth ——— */
+.card,
+.ios-group,
+.kpi-strip__item {
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+[data-theme='light'] .card--elevated {
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(6, 78, 59, 0.06);
+}
+
+[data-theme='dark'] .card--elevated {
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ——— Page header refinement ——— */
+.page-header__title {
+  font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+}
+
+.date-chip {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--grouped-bg);
+  border: 0.5px solid var(--separator);
+}
+
+/* ——— Nav sidebar ——— */
+.app-shell__nav-link {
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.app-shell__nav-link--active {
+  background: var(--forest-soft);
+  box-shadow: none;
+}
+
+/* ——— Stat / pipeline cards ——— */
+.stat-card,
+.pipeline-card {
+  border-radius: 16px;
+}
+
+/* ——— Install page ——— */
+.settings-hero-logo .rg-logo__img--hero {
+  width: min(280px, 100%);
+}
+
+.settings-brand-card {
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.login-card__logo {
+  margin-bottom: var(--space-4);
+}
+
+.login-card__logo .rg-logo__img--compact {
+  width: 160px;
+}
+
+.install-page .rg-logo--hero {
+  margin: 0 auto var(--space-6);
+}

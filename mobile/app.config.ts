@@ -35,7 +35,8 @@ const config: ExpoConfig = {
   extra: {
     ...base.extra,
     mapsAndroidEnabled: Boolean(androidMapsKey),
-    mapsIosEnabled: Boolean(iosMapsKey),
+    /** iOS usa MapKit — não depende da chave Google. */
+    mapsIosEnabled: true,
     apiMode:
       process.env.EXPO_PUBLIC_API_MODE === 'api'
         ? 'api'

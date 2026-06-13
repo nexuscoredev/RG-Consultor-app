@@ -20,10 +20,6 @@ export default function MoreStackLayout() {
       <Stack.Screen name="alerts" options={{ title: 'Alertas gestão' }} />
       <Stack.Screen name="legal" options={{ title: 'Privacidade e retenção' }} />
       <Stack.Screen name="settings" options={{ title: 'Configurações' }} />
-      <Stack.Screen name="commercial" options={{ headerShown: false }} />
-      <Stack.Screen name="proposal" options={{ headerShown: false }} />
-      <Stack.Screen name="pipeline" options={{ headerShown: false }} />
-      <Stack.Screen name="contract-flow" options={{ headerShown: false }} />
     </Stack>
   );
 }

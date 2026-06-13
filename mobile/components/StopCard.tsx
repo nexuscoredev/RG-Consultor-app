@@ -5,7 +5,9 @@ import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { useDemoGps } from '@/context/DemoGpsContext';
 import { useGamification } from '@/context/GamificationContext';
 import { useSync } from '@/context/SyncContext';
+import { afterCommercialEnqueue } from '@/lib/commercialSync';
 import { radius, space } from '@/constants/layout';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { isDemoToolsEnabled } from '@/lib/demoTools';
 import { distanceMeters } from '@/lib/geo';
 import {
@@ -13,7 +15,7 @@ import {
   recordCheckInValid,
   recordCheckOut,
 } from '@/lib/gamificationEngine';
-import { visitSessionHref } from '@/lib/commercialLinks';
+import { proposalHrefFromStop, visitSessionHref } from '@/lib/commercialLinks';
 import { t } from '@/lib/i18n';
 import { enqueueCheckIn, enqueueCheckOut } from '@/lib/outbox';
 import { whatsAppUrl } from '@/lib/proposalTemplate';
@@ -22,7 +24,7 @@ import { setCheckIn, setCheckOut, type VisitLocal } from '@/lib/visitStore';
 import type { Parada } from '@rg-ambiental/shared';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
-import { Link } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import * as Location from 'expo-location';
 import { useCallback, useState } from 'react';
 import {
@@ -55,11 +57,22 @@ type Props = {
 export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const palette = Colors[scheme];
+  const { isTablet } = useTabletLayout();
   const S = t('stopCard');
   const C = t('common');
   const { simulateAtClient } = useDemoGps();
-  const { refreshCounts, runSyncNow } = useSync();
+  const sync = useSync();
+  const router = useRouter();
   const { refresh: refreshGamification } = useGamification();
+  const visitCtx = {
+    routeDate,
+    stopId: stop.id,
+    company: stop.accountName,
+    contact: stop.contact.name,
+    address: stop.addressLine,
+    city: stop.city,
+    phone: stop.contact.phoneE164,
+  };
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [justifyOpen, setJustifyOpen] = useState(false);
@@ -144,7 +157,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
         else recordCheckInJustified();
         refreshGamification();
         onMutate();
-        refreshCounts();
+        afterCommercialEnqueue(sync);
       } finally {
         setBusy(false);
       }
@@ -157,7 +170,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
       lat,
       lng,
       onMutate,
-      refreshCounts,
+      sync,
       refreshGamification,
       resolvePosition,
       routeDate,
@@ -203,7 +216,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
         recordCheckOut();
         refreshGamification();
         onMutate();
-        refreshCounts();
+        afterCommercialEnqueue(sync);
       } finally {
         setBusy(false);
       }
@@ -215,7 +228,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
       lat,
       lng,
       onMutate,
-      refreshCounts,
+      sync,
       refreshGamification,
       resolvePosition,
       routeDate,
@@ -232,18 +245,24 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
     void Linking.openURL(whatsAppUrl(text, stop.contact.phoneE164));
   }, [S.waTemplate, stop.accountName, stop.contact.name, stop.contact.phoneE164]);
 
+  const navigateAfterOutcome = useCallback(
+    (kind: VisitOutcomeKind) => {
+      if (kind === 'proposta') {
+        router.push(proposalHrefFromStop(stop, routeDate));
+        return;
+      }
+      router.push(visitSessionHref(stop, routeDate));
+    },
+    [routeDate, router, stop],
+  );
+
   const onNextStep = useCallback(() => {
     const apply = (kind: VisitOutcomeKind) => {
       void (async () => {
-        await registerVisitOutcome(kind, {
-          routeDate,
-          stopId: stop.id,
-          company: stop.accountName,
-        });
+        await registerVisitOutcome(kind, visitCtx, sync);
         refreshGamification();
-        refreshCounts();
-        void runSyncNow();
         onMutate();
+        navigateAfterOutcome(kind);
       })();
     };
 
@@ -262,13 +281,11 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
     S.outcomeMtr,
     S.outcomeOther,
     S.outcomeProposal,
+    navigateAfterOutcome,
     onMutate,
-    refreshCounts,
     refreshGamification,
-    routeDate,
-    runSyncNow,
-    stop.accountName,
-    stop.id,
+    sync,
+    visitCtx,
   ]);
 
   const submitJustification = useCallback(() => {
@@ -291,6 +308,7 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
     <View
       style={[
         styles.card,
+        isTablet && styles.cardTablet,
         {
           backgroundColor: palette.card,
           borderColor: highlightArrival ? palette.lime : palette.border,
@@ -303,36 +321,44 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
         },
       ]}>
       <Text
-        style={[styles.time, { color: palette.tint }]}
+        style={[styles.time, isTablet && styles.timeTablet, { color: palette.tint }]}
         accessibilityLabel={S.windowA11y.replace('{start}', windowStart).replace('{end}', windowEnd)}>
         {windowStart} – {windowEnd}
       </Text>
-      <Text style={[styles.account, { color: palette.text }]}>{stop.accountName}</Text>
-      <Text style={[styles.address, { color: palette.textSecondary }]}>
+      <Text style={[styles.account, isTablet && styles.accountTablet, { color: palette.text }]}>
+        {stop.accountName}
+      </Text>
+      <Text style={[styles.address, isTablet && styles.addressTablet, { color: palette.textSecondary }]}>
         {stop.addressLine}
         {'\n'}
         {stop.city}
       </Text>
       {visit?.next_step ? (
-        <Text style={[styles.badge, { color: palette.tint }]}>
+        <Text style={[styles.badge, isTablet && styles.badgeTablet, { color: palette.tint }]}>
           {S.nextStepBadge.replace('{step}', visit.next_step).replace('{note}', visit.next_note ?? '')}
         </Text>
       ) : null}
       {checkedIn ? (
-        <Text style={[styles.meta, { color: palette.textSecondary }]}>
+        <Text style={[styles.meta, isTablet && styles.metaTablet, { color: palette.textSecondary }]}>
           {S.checkInAt.replace('{at}', visit?.check_in_at ?? '')}
         </Text>
       ) : null}
       {checkedOut ? (
-        <Text style={[styles.meta, { color: palette.textSecondary }]}>
+        <Text style={[styles.meta, isTablet && styles.metaTablet, { color: palette.textSecondary }]}>
           {S.checkOutAt.replace('{at}', visit?.check_out_at ?? '')}
         </Text>
       ) : null}
 
-      <View style={styles.contactBlock}>
-        <Text style={[styles.contactName, { color: palette.text }]}>{stop.contact.name}</Text>
-        <Text style={[styles.contactRole, { color: palette.textSecondary }]}>{stop.contact.role}</Text>
-        <Text style={[styles.phone, { color: palette.textSecondary }]}>{stop.contact.phoneE164}</Text>
+      <View style={[styles.contactBlock, isTablet && styles.contactBlockTablet]}>
+        <Text style={[styles.contactName, isTablet && styles.contactNameTablet, { color: palette.text }]}>
+          {stop.contact.name}
+        </Text>
+        <Text style={[styles.contactRole, isTablet && styles.contactRoleTablet, { color: palette.textSecondary }]}>
+          {stop.contact.role}
+        </Text>
+        <Text style={[styles.phone, isTablet && styles.phoneTablet, { color: palette.textSecondary }]}>
+          {stop.contact.phoneE164}
+        </Text>
       </View>
 
       <View style={styles.gridRow}>
@@ -411,12 +437,39 @@ export function StopCard({ stop, routeDate, visit, onMutate, highlightArrival }:
             accessibilityLabel={S.nextStepBtnA11y}
           />
         </>
+      ) : (
+        <>
+          <Text style={[styles.postVisitTitle, { color: palette.text }]}>{S.postVisitTitle}</Text>
+          <Text style={[styles.postVisitBody, { color: palette.textSecondary }]}>{S.postVisitBody}</Text>
+          <Link href={proposalHrefFromStop(stop, routeDate)} asChild>
+            <PrimaryButton fullWidth label={S.postVisitProposal} accessibilityLabel={S.postVisitProposalA11y} />
+          </Link>
+          <SecondaryButton
+            fullWidth
+            tint
+            label={S.nextStepBtn}
+            onPress={onNextStep}
+            accessibilityLabel={S.nextStepBtnA11y}
+          />
+          <Link href={'/(tabs)/commercial/pipeline' as Href} asChild>
+            <SecondaryButton fullWidth label={S.postVisitPipeline} accessibilityLabel={S.postVisitPipelineA11y} />
+          </Link>
+        </>
+      )}
+      {feedback ? (
+        <Text style={[styles.feedback, isTablet && styles.feedbackTablet, { color: palette.textSecondary }]}>
+          {feedback}
+        </Text>
       ) : null}
-      {feedback ? <Text style={[styles.feedback, { color: palette.textSecondary }]}>{feedback}</Text> : null}
 
       <Modal visible={justifyOpen} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+          <View
+            style={[
+              styles.modalCard,
+              isTablet && styles.modalCardTablet,
+              { backgroundColor: palette.card, borderColor: palette.border },
+            ]}>
             <Text style={[styles.modalTitle, { color: palette.text }]}>{S.justificationRequired}</Text>
             <Text style={[styles.modalBody, { color: palette.textSecondary }]}>{S.justificationBody}</Text>
             <TextInput
@@ -455,18 +508,31 @@ const styles = StyleSheet.create({
     padding: space.md,
     gap: space.sm,
   },
+  cardTablet: { padding: space.lg, gap: space.md, borderRadius: radius.lg },
   time: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  timeTablet: { fontSize: 15 },
   account: { fontSize: 18, fontWeight: '800' },
+  accountTablet: { fontSize: 22 },
   address: { fontSize: 14, lineHeight: 20 },
+  addressTablet: { fontSize: 16, lineHeight: 24 },
   meta: { fontSize: 12 },
+  metaTablet: { fontSize: 14 },
   badge: { fontSize: 13, fontWeight: '700' },
+  badgeTablet: { fontSize: 15 },
   contactBlock: { marginTop: space.xs },
+  contactBlockTablet: { marginTop: space.sm },
   contactName: { fontSize: 16, fontWeight: '700' },
+  contactNameTablet: { fontSize: 18 },
   contactRole: { fontSize: 13, marginTop: 2 },
+  contactRoleTablet: { fontSize: 15, marginTop: 4 },
   phone: { fontSize: 13, marginTop: 2 },
+  phoneTablet: { fontSize: 15, marginTop: 4 },
   gridRow: { flexDirection: 'row', gap: space.sm },
   gridCell: { flex: 1 },
   feedback: { fontSize: 13, lineHeight: 18 },
+  feedbackTablet: { fontSize: 15, lineHeight: 22 },
+  postVisitTitle: { fontSize: 15, fontWeight: '900', marginTop: space.xs },
+  postVisitBody: { fontSize: 13, lineHeight: 18, marginBottom: 2 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -474,6 +540,7 @@ const styles = StyleSheet.create({
     padding: space.lg,
   },
   modalCard: { borderRadius: radius.md, padding: space.md, borderWidth: 1 },
+  modalCardTablet: { padding: space.lg, maxWidth: 560, alignSelf: 'center', width: '100%' },
   modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: space.xs },
   modalBody: { marginBottom: space.sm, lineHeight: 20 },
   input: {

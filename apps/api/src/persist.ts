@@ -16,6 +16,19 @@ export type StoreSnapshot = {
   syncedIds: string[];
   pipeline: PipelineRow[];
   sellerStats: Record<string, SellerStatsSnapshot>;
+  clientsBySeller?: Record<string, ClientSnapshot[]>;
+};
+
+export type ClientSnapshot = {
+  id: string;
+  company: string;
+  contactName: string;
+  segment?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  cnpj?: string;
+  updatedAt: number;
 };
 
 const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');

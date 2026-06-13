@@ -5,12 +5,14 @@ import { Surface } from '@/components/ui/Surface';
 import { useGamification } from '@/context/GamificationContext';
 import { STORE_ITEMS, type StoreItem } from '@/lib/gamificationEngine';
 import { TIER_SHIMMER } from '@/lib/tierVisuals';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { radius, space, tabBarFloatingClearance } from '@/constants/layout';
 import { STORE_ITEM_IMAGE_URI } from '@/lib/mockData';
 import { t } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const showcaseTag: Record<string, string> = {
@@ -87,6 +89,7 @@ export default function StoreScreen() {
   const insets = useSafeAreaInsets();
   const bottomPad = tabBarFloatingClearance(insets.bottom);
   const { wallet, redemptions, redeem } = useGamification();
+  const { isWide } = useTabletLayout();
 
   const onRedeem = (item: StoreItem) => {
     Alert.alert('Resgatar prêmio', `${item.title}\nCusto: ${item.costCoins} moedas. Você tem ${wallet.coins}.`, [
@@ -102,9 +105,10 @@ export default function StoreScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: bottomPad }]}
-      showsVerticalScrollIndicator={false}>
+    <TabletScrollScreen
+      style={{ backgroundColor: p.background }}
+      padBottom={bottomPad}
+      contentContainerStyle={styles.root}>
       <Text style={[styles.eyebrow, { color: p.textSecondary }]}>Marketplace</Text>
       <Text style={[styles.headline, { color: p.text }]}>Recompensas RG</Text>
       <Text style={[styles.sub, { color: p.textSecondary }]}>
@@ -118,18 +122,21 @@ export default function StoreScreen() {
       </Surface>
 
       <Text style={[styles.section, { color: p.textSecondary }]}>Vitrine</Text>
+      <View style={isWide ? styles.productGrid : undefined}>
       {STORE_ITEMS.map((item) => {
         const affordable = wallet.coins >= item.costCoins;
         return (
+          <View key={item.id} style={isWide ? styles.productCell : undefined}>
           <LuxuryCard
-            key={item.id}
             item={item}
             affordable={affordable}
             palette={p}
             onRedeem={() => onRedeem(item)}
           />
+          </View>
         );
       })}
+      </View>
 
       <Text style={[styles.section, { color: p.textSecondary }]}>Histórico</Text>
       <Surface style={{ paddingVertical: space.md }}>
@@ -146,12 +153,14 @@ export default function StoreScreen() {
           ))
         )}
       </Surface>
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.lg, paddingBottom: space.xl },
+  root: { gap: space.lg },
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  productCell: { width: '48%', flexGrow: 1 },
   heroImg: {
     width: '100%',
     height: 176,

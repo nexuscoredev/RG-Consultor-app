@@ -5,16 +5,19 @@ import { useAuth } from '@/context/AuthContext';
 import type { ThemePreference } from '@/context/PrefsContext';
 import { usePrefs } from '@/context/PrefsContext';
 import { useSync } from '@/context/SyncContext';
-import { radius, screenScroll, space, tabBarFloatingClearance } from '@/constants/layout';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { radius, space, tabBarFloatingClearance } from '@/constants/layout';
 import { countFailedOutbox, countPendingOutbox, listOutboxForUi } from '@/lib/outbox';
+import { outboxPayloadSummary, outboxTypeLabel } from '@/lib/outboxLabels';
 import { apiHealthCheck } from '@/lib/apiClient';
-import { getApiBaseUrl, getApiMode, isApiEnabled } from '@/lib/apiConfig';
+import { getApiBaseUrl, getApiConfigWarnings, getApiMode, isApiEnabled } from '@/lib/apiConfig';
 import { t } from '@/lib/i18n';
 import { checkOtaUpdateAvailable, fetchOtaAndReload, isOtaRuntimeSupported } from '@/lib/otaUpdates';
 import { useRouter } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -36,9 +39,9 @@ export default function SettingsScreen() {
     setPending(countPendingOutbox());
     setFailed(countFailedOutbox());
     setTail(
-      listOutboxForUi(5)
-        .map((r) => `${r.type} ${r.status}`)
-        .join(' · '),
+      listOutboxForUi(8)
+        .map((r) => `${outboxTypeLabel(r.type)} · ${outboxPayloadSummary(r.type, r.payload)} · ${r.status}`)
+        .join('\n'),
     );
     if (isApiEnabled()) {
       void apiHealthCheck().then(setApiOk);
@@ -46,6 +49,12 @@ export default function SettingsScreen() {
       setApiOk(null);
     }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
   const testBiometric = useCallback(async () => {
     const st = t('settings');
@@ -127,12 +136,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.root,
-        screenScroll,
-        { backgroundColor: p.background, paddingBottom: bottomPad },
-      ]}
+    <TabletScrollScreen
+      style={{ backgroundColor: p.background }}
+      padBottom={bottomPad}
+      contentContainerStyle={styles.root}
       onLayout={refresh}>
       {profile ? (
         <View style={[styles.profileCard, { borderColor: p.border, backgroundColor: p.card }]}>
@@ -198,6 +205,11 @@ export default function SettingsScreen() {
             {apiOk ? s.apiOnline : s.apiOffline}
           </Text>
         ) : null}
+        {getApiConfigWarnings().map((w) => (
+          <Text key={w} style={[styles.p, { color: p.danger, marginTop: 4 }]}>
+            {w}
+          </Text>
+        ))}
       </View>
       <Text style={[styles.p, { color: p.textSecondary }]}>
         {s.syncQueue.replace('{pending}', String(pending)).replace('{failed}', String(failed)).replace('{status}', status)}
@@ -241,7 +253,7 @@ export default function SettingsScreen() {
         accessibilityLabel={s.signOutA11y}>
         <Text style={styles.btnText}>{s.signOut}</Text>
       </Pressable>
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 

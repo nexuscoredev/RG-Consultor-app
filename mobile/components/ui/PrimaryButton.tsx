@@ -1,6 +1,7 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { HapticPressable } from '@/components/ui/HapticPressable';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { button, radius } from '@/constants/layout';
 import { typography } from '@/constants/typography';
 import { forwardRef, type ReactNode } from 'react';
@@ -28,6 +29,7 @@ export const PrimaryButton = forwardRef<View, Props>(function PrimaryButton(
   ref,
 ) {
   const p = Colors[useColorScheme() ?? 'light'];
+  const { touchMinHeight } = useTabletLayout();
   const bg =
     variant === 'lime'
       ? p.lime
@@ -46,6 +48,7 @@ export const PrimaryButton = forwardRef<View, Props>(function PrimaryButton(
       accessibilityLabel={accessibilityLabel ?? label}
       style={[
         styles.base,
+        { minHeight: touchMinHeight },
         fullWidth && styles.fullWidth,
         { backgroundColor: bg, opacity: disabled || loading ? 0.55 : 1 },
         style as ViewStyle,

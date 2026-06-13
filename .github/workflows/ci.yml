@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck mobile
+        run: npm run mobile:check
+
+      - name: Typecheck API
+        run: npm run api:check
+
+      - name: Build shared + typecheck consultor
+        run: |
+          npm run build --workspace=@rg-ambiental/shared
+          npm run consultor:check
+
+      - name: Build consultor
+        run: npm run consultor:build
+
+      - name: Unit tests (mobile)
+        run: npm run test:geo
+
+      - name: Start API and smoke test
+        run: |
+          npm run api &
+          sleep 3
+          npm run api:smoke
+          npm run consultor:smoke

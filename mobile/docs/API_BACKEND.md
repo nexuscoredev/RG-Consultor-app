@@ -53,12 +53,28 @@ npm run mobile
 | GET | `/auth/me` | Perfil (Bearer) |
 | GET | `/me/routes/:date` | Rota do dia (`yyyy-mm-dd`) |
 | GET | `/me/pipeline` | CRM / oportunidades |
-| POST | `/sync/events` | Fila outbox (check-in, proposta, reunião) |
+| POST | `/sync/events` | Fila outbox (ver tabela abaixo) |
 | GET | `/master/dashboard` | KPIs + equipa (só master) |
 
 ## 4. Sync offline
 
-Check-ins, propostas e registos de reunião entram na **fila SQLite (outbox)**. Com API activa e token válido, a sync envia cada evento para `POST /sync/events` (automática ao voltar à app ou manual em **Configurações → Sincronizar**).
+Eventos entram na **fila SQLite (outbox)**. Com API activa e token válido, cada evento vai para `POST /sync/events` (automática ou manual em **Configurações → Sincronizar**).
+
+A API responde `{ accepted: string[], rejected: { id, reason }[] }`. O mobile só marca como `synced` se o `id` estiver em `accepted`.
+
+### Tipos de evento suportados
+
+| Tipo | Origem no app | Efeito no pipeline / KPIs |
+|------|---------------|---------------------------|
+| `CHECK_IN` | Check-in GPS na parada | +1 visita/semana; status em visita |
+| `CHECK_OUT` | Check-out GPS | Status em rota |
+| `MEETING_LOG` | Registo de reunião | Atualiza estágio pelo próximo passo |
+| `PROPOSAL_SENT` | Proposta PDF gerada | Estágio **Proposta enviada**; +1 proposta/semana |
+| `PROSPECTING_SAVED` | Ficha de prospecção | Estágio **Prospecção** |
+| `PROPOSAL_ACCEPTED` | Registo de aceite | Estágio **Proposta aceita** |
+| `CONTRACT_CLOSED` | Assistente novo contrato | Estágio **Contrato fechado**; +1 contrato/mês |
+
+Contratos partilhados (Zod): `packages/shared/src/index.ts` → `OutboxEventSchema`.
 
 ## 5. Produção (EAS)
 

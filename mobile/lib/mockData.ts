@@ -197,7 +197,7 @@ export const STORE_ITEM_IMAGE_URI: Record<string, string> = {
 };
 
 export const mockMgmtAlerts = [
-  { id: '1', title: 'Rota atrasada', body: 'Janela 09:00 — ACME: considere replanejar ou registrar justificativa.', severity: 'warn' as const },
+  { id: '1', title: 'Rota atrasada', body: 'Janela 09:00 — ACME: considere replanejar ou registrar justificativa.', severity: 'warning' as const },
   { id: '2', title: 'Check-in inválido', body: '2 tentativas fora do raio ontem — revisar com o gestor comercial.', severity: 'danger' as const },
   { id: '3', title: 'Offline prolongado', body: 'Equipe Zona Sul sem sync > 4h — verificar conectividade.', severity: 'info' as const },
 ];

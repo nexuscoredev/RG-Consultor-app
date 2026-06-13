@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { PipelineRow } from '@/lib/api';
+import { FUNNEL_STAGE, inferPhaseFromStage, type CommercialPhase } from '@/lib/commercialFunnel';
 
 const KEY = 'rg_local_pipeline_v1';
 
@@ -8,13 +9,21 @@ export type LocalPipelineEntry = {
   id: string;
   account: string;
   stage: string;
+  phase: CommercialPhase;
   owner: string;
   value: string;
   docPending?: string;
-  source: 'meeting' | 'proposal' | 'visit';
+  source: 'meeting' | 'proposal' | 'visit' | 'prospecting' | 'acceptance';
   linkedMeetingId?: string;
   proposalNumber?: string;
   updatedAt: number;
+  /** Contexto da parada — preserva ligação com agenda/visita. */
+  routeDate?: string;
+  stopId?: string;
+  contact?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
 };
 
 export type PipelineViewRow = PipelineRow & {
@@ -22,6 +31,12 @@ export type PipelineViewRow = PipelineRow & {
   source: 'api' | 'local';
   updatedAt?: number;
   proposalNumber?: string;
+  routeDate?: string;
+  stopId?: string;
+  contact?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
 };
 
 export async function loadLocalPipeline(): Promise<LocalPipelineEntry[]> {
@@ -29,7 +44,12 @@ export async function loadLocalPipeline(): Promise<LocalPipelineEntry[]> {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as LocalPipelineEntry[]) : [];
+    return Array.isArray(parsed)
+      ? (parsed as LocalPipelineEntry[]).map((row) => ({
+          ...row,
+          phase: row.phase ?? inferPhaseFromStage(row.stage),
+        }))
+      : [];
   } catch {
     return [];
   }
@@ -44,7 +64,11 @@ export async function upsertLocalPipeline(
 ): Promise<LocalPipelineEntry> {
   const rows = await loadLocalPipeline();
   const at = entry.updatedAt ?? Date.now();
-  const row: LocalPipelineEntry = { ...entry, updatedAt: at };
+  const row: LocalPipelineEntry = {
+    ...entry,
+    phase: entry.phase ?? inferPhaseFromStage(entry.stage),
+    updatedAt: at,
+  };
   const idx = rows.findIndex((r) => r.id === row.id);
   if (idx >= 0) rows[idx] = row;
   else rows.unshift(row);
@@ -54,11 +78,12 @@ export async function upsertLocalPipeline(
 
 export function inferStageFromMeeting(nextAction: string, notes: string): string {
   const text = `${nextAction} ${notes}`.toLowerCase();
-  if (text.includes('proposta') || text.includes('pdf')) return 'Proposta — follow-up';
-  if (text.includes('mtr') || text.includes('document')) return 'Diagnóstico / documentação';
-  if (text.includes('coleta') || text.includes('contrato')) return 'Fechamento / coleta';
+  if (text.includes('contrato') || text.includes('fechamento')) return FUNNEL_STAGE.contractClosed;
+  if (text.includes('aceite') || text.includes('aceita')) return FUNNEL_STAGE.accepted;
+  if (text.includes('proposta') || text.includes('pdf')) return FUNNEL_STAGE.proposalFollowup;
+  if (text.includes('mtr') || text.includes('document')) return FUNNEL_STAGE.prospectingDocs;
   if (nextAction.trim()) return nextAction.trim();
-  return 'Registo de visita';
+  return FUNNEL_STAGE.visitLogged;
 }
 
 export function formatMeetingValue(nextAction: string, nextDate: string): string {
@@ -67,21 +92,48 @@ export function formatMeetingValue(nextAction: string, nextDate: string): string
   return 'Aguardando próximo passo';
 }
 
+type VisitMetaFields = Pick<
+  LocalPipelineEntry,
+  'routeDate' | 'stopId' | 'contact' | 'address' | 'city' | 'phone'
+>;
+
 export async function syncMeetingLogToPipeline(entry: {
   id: string;
   client: string;
   notes: string;
   nextAction: string;
   nextDate: string;
+  visit?: VisitMetaFields;
 }): Promise<LocalPipelineEntry> {
   return upsertLocalPipeline({
     id: `meeting-${entry.id}`,
     account: entry.client,
     stage: inferStageFromMeeting(entry.nextAction, entry.notes),
+    phase: inferPhaseFromStage(inferStageFromMeeting(entry.nextAction, entry.notes)),
     owner: 'Você',
     value: formatMeetingValue(entry.nextAction, entry.nextDate),
     source: 'meeting',
     linkedMeetingId: entry.id,
+    ...entry.visit,
+  });
+}
+
+export async function syncFollowupToPipeline(entry: {
+  company: string;
+  nextStep: string;
+  deadline: string;
+  visit?: VisitMetaFields;
+}): Promise<LocalPipelineEntry> {
+  const id = `followup-${entry.company.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+  return upsertLocalPipeline({
+    id,
+    account: entry.company,
+    stage: FUNNEL_STAGE.proposalFollowup,
+    phase: 'proposal',
+    owner: 'Você',
+    value: formatMeetingValue(entry.nextStep, entry.deadline),
+    source: 'meeting',
+    ...entry.visit,
   });
 }
 
@@ -96,7 +148,8 @@ export async function syncProposalToPipeline(entry: {
   return upsertLocalPipeline({
     id: `proposal-${entry.proposalNumber}`,
     account: entry.company,
-    stage: 'Proposta enviada',
+    stage: FUNNEL_STAGE.proposalSent,
+    phase: 'proposal',
     owner: 'Você',
     value: entry.value.trim() || 'Valor a confirmar',
     docPending: docHint,
@@ -114,7 +167,8 @@ export async function syncContractToPipeline(entry: {
   return upsertLocalPipeline({
     id: `contract-${entry.company.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
     account: entry.company,
-    stage: 'Contrato fechado',
+    stage: FUNNEL_STAGE.contractClosed,
+    phase: 'contract',
     owner: 'Você',
     value: entry.value.trim() || 'Valor contratado',
     docPending: `CNPJ ${entry.cnpj}`,
@@ -123,15 +177,22 @@ export async function syncContractToPipeline(entry: {
 }
 
 export function mergePipelineRows(api: PipelineRow[], local: LocalPipelineEntry[]): PipelineViewRow[] {
-  const apiRows: PipelineViewRow[] = api.map((r, i) => ({
-    ...r,
-    id: `api-${i}-${r.account}`,
+  const apiRows: PipelineViewRow[] = api.map((r) => ({
+    account: r.account,
+    stage: r.stage,
+    phase: r.phase,
+    owner: r.owner,
+    value: r.value,
+    docPending: r.docPending,
+    id: r.id,
     source: 'api' as const,
+    updatedAt: r.updatedAt,
   }));
 
   const localRows: PipelineViewRow[] = local.map((r) => ({
     account: r.account,
     stage: r.stage,
+    phase: r.phase,
     owner: r.owner,
     value: r.value,
     docPending: r.docPending,
@@ -139,20 +200,69 @@ export function mergePipelineRows(api: PipelineRow[], local: LocalPipelineEntry[
     source: 'local' as const,
     updatedAt: r.updatedAt,
     proposalNumber: r.proposalNumber,
+    routeDate: r.routeDate,
+    stopId: r.stopId,
+    contact: r.contact,
+    address: r.address,
+    city: r.city,
+    phone: r.phone,
   }));
 
-  const byAccount = new Map<string, PipelineViewRow>();
+  const byKey = new Map<string, PipelineViewRow>();
   for (const row of [...apiRows, ...localRows]) {
-    const key = row.account.trim().toLowerCase();
-    const prev = byAccount.get(key);
+    const accountKey = row.account.trim().toLowerCase();
+    const prev = byKey.get(accountKey);
     if (!prev || (row.updatedAt ?? 0) > (prev.updatedAt ?? 0)) {
-      byAccount.set(key, row);
+      byKey.set(accountKey, row);
     }
   }
 
-  return [...byAccount.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  return [...byKey.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
 export function countOpenPipeline(rows: PipelineViewRow[]): number {
   return rows.filter((r) => !/contrato ativo|renovação anual/i.test(r.stage)).length;
+}
+
+export async function syncProspectingToPipeline(entry: {
+  id: string;
+  company: string;
+  nextStep: string;
+  nextDate: string;
+  segment: string;
+  volumeMonthly: string;
+}): Promise<LocalPipelineEntry> {
+  const valueParts = [entry.segment.trim(), entry.volumeMonthly.trim() ? `${entry.volumeMonthly.trim()} t/mês` : '']
+    .filter(Boolean)
+    .join(' · ');
+  return upsertLocalPipeline({
+    id: `prospect-${entry.id}`,
+    account: entry.company,
+    stage: FUNNEL_STAGE.prospecting,
+    phase: 'prospecting',
+    owner: 'Você',
+    value: formatMeetingValue(entry.nextStep, entry.nextDate) || valueParts || 'Qualificação em curso',
+    docPending: valueParts || undefined,
+    source: 'prospecting',
+  });
+}
+
+export async function syncAcceptanceToPipeline(entry: {
+  id: string;
+  company: string;
+  proposalNumber: string;
+  acceptedValue: string;
+  docsPending?: string;
+}): Promise<LocalPipelineEntry> {
+  return upsertLocalPipeline({
+    id: `accept-${entry.id}`,
+    account: entry.company,
+    stage: FUNNEL_STAGE.accepted,
+    phase: 'acceptance',
+    owner: 'Você',
+    value: entry.acceptedValue.trim() || 'Valor aceite',
+    docPending: entry.docsPending,
+    source: 'acceptance',
+    proposalNumber: entry.proposalNumber,
+  });
 }

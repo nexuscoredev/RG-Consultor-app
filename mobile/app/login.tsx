@@ -1,16 +1,17 @@
 import { RgConsultorLogo } from '@/components/RgConsultorLogo';
 import Colors from '@/constants/Colors';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { TabletContent } from '@/components/ui/TabletContent';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { useAuth } from '@/context/AuthContext';
 import { getAuthApiHint, isDemoAuthVisible } from '@/lib/authApi';
 import { t } from '@/lib/i18n';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -24,8 +25,9 @@ export default function LoginScreen() {
   const { signIn } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('vendedor@rg.com');
-  const [password, setPassword] = useState('rg2026');
+  const { horizontalPadding, isTablet } = useTabletLayout();
+  const [email, setEmail] = useState(isDemoAuthVisible() ? 'vendedor@rg.com' : '');
+  const [password, setPassword] = useState(isDemoAuthVisible() ? 'rg2026' : '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -46,7 +48,8 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: p.background, paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.inner}>
+      <View style={[styles.inner, { paddingHorizontal: horizontalPadding }]}>
+        <TabletContent style={styles.form}>
         <RgConsultorLogo variant="hero" subtitle="Performance comercial e sustentabilidade." />
         {isDemoAuthVisible() ? (
           <View style={[styles.demoBadge, { backgroundColor: `${p.tint}14`, borderColor: `${p.tint}40` }]}>
@@ -64,7 +67,11 @@ export default function LoginScreen() {
           keyboardType="email-address"
           placeholder={L.email}
           placeholderTextColor={p.textSecondary}
-          style={[styles.input, { borderColor: p.border, color: p.text, backgroundColor: p.card }]}
+          style={[
+            styles.input,
+            isTablet && styles.inputTablet,
+            { borderColor: p.border, color: p.text, backgroundColor: p.card },
+          ]}
           accessibilityLabel={L.email}
           accessibilityHint="Endereço de e-mail corporativo"
         />
@@ -74,7 +81,11 @@ export default function LoginScreen() {
           secureTextEntry
           placeholder={L.password}
           placeholderTextColor={p.textSecondary}
-          style={[styles.input, { borderColor: p.border, color: p.text, backgroundColor: p.card }]}
+          style={[
+            styles.input,
+            isTablet && styles.inputTablet,
+            { borderColor: p.border, color: p.text, backgroundColor: p.card },
+          ]}
           accessibilityLabel={L.password}
           accessibilityHint="Senha de acesso"
         />
@@ -83,17 +94,15 @@ export default function LoginScreen() {
             {err}
           </Text>
         ) : null}
-        <Pressable
+        <PrimaryButton
+          fullWidth
+          label={L.submit}
           onPress={() => void submit()}
           disabled={busy}
-          style={({ pressed }) => [
-            styles.btn,
-            { backgroundColor: p.tint, opacity: pressed ? 0.88 : busy ? 0.6 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={L.submit}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{L.submit}</Text>}
-        </Pressable>
+          loading={busy}
+          accessibilityLabel={L.submit}
+        />
+        </TabletContent>
       </View>
     </KeyboardAvoidingView>
   );
@@ -101,7 +110,9 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  inner: { flex: 1, padding: 24, gap: 12, justifyContent: 'center' },
+  inner: { flex: 1, gap: 12, justifyContent: 'center' },
+  form: { width: '100%', gap: 12 },
+  inputTablet: { minHeight: 52, fontSize: 17, paddingVertical: 14 },
   demoBadge: {
     alignSelf: 'center',
     paddingHorizontal: 12,
@@ -113,6 +124,4 @@ const styles = StyleSheet.create({
   h1: { fontSize: 22, fontWeight: '800', marginTop: 8 },
   sub: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16 },
-  btn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
 });

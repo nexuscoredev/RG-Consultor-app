@@ -11,7 +11,11 @@ export default function CommercialStackLayout() {
         headerTintColor: p.tint,
         headerTitleStyle: { color: p.text, fontWeight: '800' },
       }}>
-      <Stack.Screen name="index" options={{ title: 'Comercial' }} />
+      <Stack.Screen name="index" options={{ title: 'Ciclo comercial' }} />
+      <Stack.Screen name="clients" options={{ title: 'Meus clientes' }} />
+      <Stack.Screen name="prospecting" options={{ title: 'Ficha de prospecção' }} />
+      <Stack.Screen name="acceptance" options={{ title: 'Aceite da proposta' }} />
+      <Stack.Screen name="contract-kit" options={{ title: 'Molde do contrato' }} />
       <Stack.Screen name="visit-session" options={{ title: 'Modo visita' }} />
       <Stack.Screen name="visit-playbook" options={{ title: 'Roteiro de visita' }} />
       <Stack.Screen name="pitch-faq" options={{ title: 'Pitch 60s e FAQ' }} />

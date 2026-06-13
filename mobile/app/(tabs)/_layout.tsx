@@ -1,8 +1,8 @@
 import React from 'react';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
-import { Link, Tabs, type Href } from 'expo-router';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Tabs } from 'expo-router';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Colors from '@/constants/Colors';
@@ -10,6 +10,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { iconSize } from '@/constants/icons';
 import { typography } from '@/constants/typography';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 
 type TabIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -39,6 +40,9 @@ export default function TabLayout() {
   const scheme = colorScheme ?? 'light';
   const p = Colors[scheme];
   const insets = useSafeAreaInsets();
+  const { isTablet, tabBarMaxWidth, tabBarHeight, width: screenW } = useTabletLayout();
+  const tabBarLeft = isTablet ? Math.max(0, (screenW - tabBarMaxWidth) / 2) : 18;
+  const tabBarWidth = isTablet ? tabBarMaxWidth : screenW - 36;
 
   return (
     <Tabs
@@ -46,26 +50,37 @@ export default function TabLayout() {
         tabBarActiveTintColor: p.tabIconSelected,
         tabBarInactiveTintColor: p.tabIconDefault,
         tabBarShowLabel: true,
-        tabBarLabelStyle: typography.tabLabel,
-        tabBarItemStyle: styles.tabItem,
+        tabBarLabelStyle: isTablet ? { ...typography.tabLabel, fontSize: 13 } : typography.tabLabel,
+        tabBarItemStyle: [styles.tabItem, isTablet && styles.tabItemTablet],
         tabBarStyle: {
           position: 'absolute',
-          left: 18,
-          right: 18,
-          bottom: Math.max(insets.bottom, 10),
-          height: 62,
+          left: tabBarLeft,
+          width: tabBarWidth,
+          bottom: Math.max(insets.bottom, isTablet ? 14 : 10),
+          height: tabBarHeight,
           borderRadius: 26,
           borderTopWidth: 0,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: `${p.forestDeep}18`,
-          backgroundColor: Platform.OS === 'android' ? `${p.card}e8` : 'transparent',
-          elevation: 16,
-          shadowColor: '#0a2418',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.14,
-          shadowRadius: 24,
+          backgroundColor:
+            Platform.OS === 'web'
+              ? scheme === 'dark'
+                ? `${p.card}f5`
+                : `${p.card}f8`
+              : Platform.OS === 'android'
+                ? `${p.card}e8`
+                : 'transparent',
           overflow: 'hidden',
           paddingHorizontal: 6,
+          ...(Platform.OS === 'web'
+            ? { boxShadow: '0 10px 24px rgba(10,36,24,0.14)' }
+            : {
+                elevation: 16,
+                shadowColor: '#0a2418',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.14,
+                shadowRadius: 24,
+              }),
         },
         tabBarBackground: () =>
           Platform.OS === 'web' ? (
@@ -91,22 +106,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Início',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} />
-          ),
-          headerRight: () => (
-            <Link href={'/(tabs)/more/settings' as Href} asChild>
-              <Pressable style={{ marginRight: 16 }} accessibilityRole="button" accessibilityLabel="Configurações">
-                {({ pressed }) => (
-                  <MaterialCommunityIcons
-                    name="cog-outline"
-                    size={iconSize.lg}
-                    color={p.text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
           ),
         }}
       />
@@ -114,6 +116,7 @@ export default function TabLayout() {
         name="agenda"
         options={{
           title: 'Agenda',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'calendar-month' : 'calendar-month-outline'} color={color} focused={focused} />
           ),
@@ -145,6 +148,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabItem: { paddingTop: 6 },
+  tabItemTablet: { paddingTop: 8, paddingHorizontal: 4 },
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',

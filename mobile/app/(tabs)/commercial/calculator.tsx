@@ -14,7 +14,9 @@ import {
 import { t } from '@/lib/i18n';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function formatRange(min: number, max: number): string {
@@ -30,6 +32,7 @@ export default function CalculatorScreen() {
   const ctx = parseCommercialContext(raw);
   const [cat, setCat] = useState<CalcCategoryId>('industria');
   const [tons, setTons] = useState('8');
+  const { isTablet, touchMinHeight } = useTabletLayout();
   const range = useMemo(() => {
     const t = parseFloat(tons.replace(',', '.')) || 0;
     return estimateRange(cat, t);
@@ -45,7 +48,7 @@ export default function CalculatorScreen() {
   });
 
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       {ctx.company ? (
         <Text style={[styles.client, { color: p.tint }]}>{ctx.company}</Text>
       ) : null}
@@ -60,7 +63,15 @@ export default function CalculatorScreen() {
               key={c.id}
               haptic={false}
               onPress={() => setCat(c.id)}
-              style={[styles.chip, { borderColor: active ? p.tint : p.border, backgroundColor: active ? `${p.tint}14` : p.card }]}>
+              style={[
+                styles.chip,
+                isTablet && styles.chipTablet,
+                {
+                  borderColor: active ? p.tint : p.border,
+                  backgroundColor: active ? `${p.tint}14` : p.card,
+                  minHeight: touchMinHeight,
+                },
+              ]}>
               <Text style={[styles.chipText, { color: active ? p.tint : p.text }]} numberOfLines={2}>
                 {c.label}
               </Text>
@@ -76,7 +87,11 @@ export default function CalculatorScreen() {
         keyboardType="decimal-pad"
         placeholder="0"
         placeholderTextColor={p.textSecondary}
-        style={[styles.input, { borderColor: p.border, color: p.text, backgroundColor: p.card }]}
+        style={[
+          styles.input,
+          isTablet && styles.inputTablet,
+          { borderColor: p.border, color: p.text, backgroundColor: p.card },
+        ]}
       />
 
       <Surface elevated style={[styles.result, { borderColor: p.border }]}>
@@ -91,12 +106,14 @@ export default function CalculatorScreen() {
           <Text style={styles.ctaText}>{CALC.useInProposal}</Text>
         </HapticPressable>
       </Link>
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: space.md },
+  root: { gap: space.md },
+  chipTablet: { paddingVertical: 14, maxWidth: '31%' },
+  inputTablet: { minHeight: 52, fontSize: 18 },
   client: { fontSize: 17, fontWeight: '900' },
   intro: { fontSize: 13, lineHeight: 19 },
   label: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },

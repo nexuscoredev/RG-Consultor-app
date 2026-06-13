@@ -9,12 +9,17 @@ export type ApiUser = {
   region: string;
 };
 
+export type CommercialPhase = 'prospecting' | 'proposal' | 'acceptance' | 'contract';
+
 export type PipelineRow = {
+  id: string;
   account: string;
   stage: string;
+  phase: CommercialPhase;
   owner: string;
   value: string;
   docPending?: string;
+  updatedAt: number;
 };
 
 export type SyncEventInput = {
@@ -112,18 +117,24 @@ export function routeForDate(isoDate: string): RotaDia {
 
 export const SEED_PIPELINE: PipelineRow[] = [
   {
+    id: 'pipeline-metalurgica-horizonte',
     account: 'Metalúrgica Horizonte',
     stage: 'Diagnóstico resíduos classe I',
+    phase: 'prospecting',
     owner: 'Consultor Demo',
     value: 'R$ 180k ARR estimado',
     docPending: 'Licença de operação',
+    updatedAt: Date.now() - 86_400_000,
   },
   {
+    id: 'pipeline-quimica-andorinha',
     account: 'Química Andorinha',
     stage: 'Proposta — logística reversa',
+    phase: 'proposal',
     owner: 'Consultor Demo',
     value: 'Aguardando MTR',
     docPending: 'MTR em análise',
+    updatedAt: Date.now() - 43_200_000,
   },
 ];
 

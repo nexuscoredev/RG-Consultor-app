@@ -42,3 +42,17 @@ export function isAuthApiEnabled(): boolean {
   if (authMode !== 'api') return false;
   return getApiBaseUrl().length > 0;
 }
+
+/** Avisos de configuração (ex.: API sem auth). */
+export function getApiConfigWarnings(): string[] {
+  const warnings: string[] = [];
+  const apiOn = getApiMode() === 'api' && getApiBaseUrl().length > 0;
+  const authOn = isAuthApiEnabled();
+  if (apiOn && !authOn) {
+    warnings.push('API activa sem AUTH_MODE=api — a sincronização pode falhar.');
+  }
+  if (getApiMode() === 'api' && !getApiBaseUrl()) {
+    warnings.push('API_MODE=api sem URL — configure EXPO_PUBLIC_API_BASE_URL.');
+  }
+  return warnings;
+}

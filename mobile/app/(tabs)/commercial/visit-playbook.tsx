@@ -7,7 +7,9 @@ import { clientStorageKey, parseCommercialContext } from '@/lib/commercialLinks'
 import { loadVisitPlaybookChecks, saveVisitPlaybookChecks } from '@/lib/commercialStorage';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function key(si: number, bi: number) {
@@ -41,16 +43,22 @@ export default function VisitPlaybookScreen() {
     [clientKey],
   );
 
+  const { isWide } = useTabletLayout();
+
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       {ctx.company ? (
         <Text style={[styles.client, { color: p.tint }]}>{ctx.company}</Text>
       ) : null}
       <Text style={[styles.intro, { color: p.textSecondary }]}>
         Execute na ordem com o cliente. O progresso fica guardado por cliente neste aparelho.
       </Text>
+      <View style={isWide ? styles.stepGrid : undefined}>
       {VISIT_PLAYBOOK.map((step, si) => (
-        <Surface key={step.title} elevated style={[styles.card, { borderColor: p.border }]}>
+        <Surface
+          key={step.title}
+          elevated
+          style={isWide ? [styles.card, styles.cardWide, { borderColor: p.border }] : [styles.card, { borderColor: p.border }]}>
           <Text style={[styles.stepTitle, { color: p.tint }]}>{step.title}</Text>
           {step.bullets.map((b, bi) => {
             const k = key(si, bi);
@@ -71,12 +79,15 @@ export default function VisitPlaybookScreen() {
           })}
         </Surface>
       ))}
-    </ScrollView>
+      </View>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: space.md },
+  root: { gap: space.md },
+  stepGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  cardWide: { width: '48%', flexGrow: 1 },
   client: { fontSize: 17, fontWeight: '900' },
   intro: { fontSize: 14, lineHeight: 20, marginBottom: 4 },
   card: { padding: space.md, borderRadius: 16, borderWidth: 1, gap: 10 },

@@ -12,6 +12,10 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_MODE": "api",
+        "EXPO_PUBLIC_AUTH_MODE": "api"
       }
     },
     "production": {

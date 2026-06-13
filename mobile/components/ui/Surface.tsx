@@ -2,7 +2,7 @@ import Colors from '@/constants/Colors';
 import { radius, shadow, space } from '@/constants/layout';
 import { useColorScheme } from '@/components/useColorScheme';
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 
 type Props = {
   children: ReactNode;
@@ -14,7 +14,7 @@ type Props = {
 export function Surface({ children, elevated, strong, style }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const p = Colors[scheme];
-  const sh = strong ? shadow.lift : elevated ? shadow.card : shadow.soft;
+  const sh = Platform.OS === 'web' ? undefined : strong ? shadow.lift : elevated ? shadow.card : shadow.soft;
   return (
     <View
       style={[

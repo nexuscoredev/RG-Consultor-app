@@ -1,4 +1,8 @@
-# Instalar o RG Consultor no celular
+# Instalar o RG Consultor no celular ou tablet
+
+## Tablet (ex.: Redmi Pad 2)
+
+O layout adapta automaticamente em telas ≥ 600dp: botões maiores (56px), hub comercial em 2 colunas, mapa da agenda mais alto e barra de tabs centralizada. Gere o **APK preview** (abaixo) e instale no tablet; para modo quiosque (só o app RG), use MDM — ver `docs/ROADMAP_SPRINTS.md` Sprint 2.
 
 ## Desenvolvimento rápido (Expo Go)
 
@@ -20,6 +24,8 @@
    Repita com `--platform ios` se tiver Apple Developer e certificados.
 
 4. Quando o build terminar, abra o link do EAS e instale o artefato no dispositivo (Android: APK direto; iOS: TestFlight ou perfil de desenvolvimento, conforme o perfil EAS).
+
+**API no APK:** o perfil `preview` liga auth/API por defeito. Passe `EXPO_PUBLIC_API_BASE_URL` no build (`eas secret` ou `--env`) — ver `mobile/docs/STAGING.md` §5. Sem URL, o app cai em modo mock.
 
 ## Perfis de login (demonstração)
 

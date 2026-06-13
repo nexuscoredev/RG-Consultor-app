@@ -33,7 +33,14 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "RG Consultor",
+      "shortName": "RG Consultor",
+      "description": "Central comercial RG Ambiental — visitas, funil e pipeline",
+      "themeColor": "#047857",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "lang": "pt-BR"
     },
     "runtimeVersion": {
       "policy": "appVersion"

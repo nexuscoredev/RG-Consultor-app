@@ -10,7 +10,7 @@ export function SyncBanner() {
   const S = t('sync');
   const { status, pending, failed, lastMessage, runSyncNow, retryFailed } = useSync();
 
-  if (status === 'idle' && pending === 0 && failed === 0 && !lastMessage) return null;
+  if (status === 'idle' && pending === 0 && failed === 0) return null;
 
   const tone =
     status === 'error' || failed > 0 ? p.danger : status === 'offline' ? p.textSecondary : p.tint;

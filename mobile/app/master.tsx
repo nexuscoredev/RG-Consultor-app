@@ -8,6 +8,8 @@ import { t } from '@/lib/i18n';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { TabletContent } from '@/components/ui/TabletContent';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -58,10 +60,11 @@ export default function MasterDashboardScreen() {
   const totalVisits = live?.kpis.visitsWeek ?? team.reduce((a, r) => a + r.visitsWeek, 0);
   const totalContracts = live?.kpis.contractsMonth ?? team.reduce((a, r) => a + r.contractsMonth, 0);
   const avgXp = live?.kpis.avgXp ?? Math.round(team.reduce((a, r) => a + r.xp, 0) / team.length);
+  const { horizontalPadding, isWide } = useTabletLayout();
 
   return (
     <View style={[styles.root, { backgroundColor: p.background, paddingTop: insets.top }]}>
-      <View style={[styles.topBar, { borderBottomColor: p.border }]}>
+      <View style={[styles.topBar, { borderBottomColor: p.border, paddingHorizontal: horizontalPadding }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.brand, { color: p.textSecondary }]}>{M.brand}</Text>
           <Text style={[styles.h1, { color: p.text }]}>{M.title}</Text>
@@ -81,7 +84,8 @@ export default function MasterDashboardScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingHorizontal: horizontalPadding, paddingBottom: insets.bottom + 24 }]}>
+        <TabletContent>
         {loading ? <ActivityIndicator color={p.tint} style={{ marginVertical: 12 }} /> : null}
 
         {source === 'live' && live ? (
@@ -124,8 +128,9 @@ export default function MasterDashboardScreen() {
         </View>
 
         <Text style={[styles.section, { color: p.textSecondary }]}>{M.teamSection}</Text>
+        <View style={isWide ? styles.teamGrid : undefined}>
         {team.map((row) => (
-          <View key={row.id} style={[styles.card, { backgroundColor: p.card, borderColor: p.border }]}>
+          <View key={row.id} style={[styles.card, isWide ? styles.cardWide : undefined, { backgroundColor: p.card, borderColor: p.border }]}>
             <View style={styles.cardHead}>
               <Text style={[styles.name, { color: p.text }]}>{row.name}</Text>
               <View style={[styles.pill, { backgroundColor: `${p.tint}22` }]}>
@@ -145,11 +150,13 @@ export default function MasterDashboardScreen() {
             </Text>
           </View>
         ))}
+        </View>
 
         <View style={[styles.hintBox, { borderColor: p.border, backgroundColor: p.card }]}>
           <Text style={[styles.hintTitle, { color: p.text }]}>{M.webPanelTitle}</Text>
           <Text style={[styles.hintBody, { color: p.textSecondary }]}>{M.webPanelBody}</Text>
         </View>
+        </TabletContent>
       </ScrollView>
     </View>
   );
@@ -176,7 +183,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   outlineBtnText: { fontWeight: '800', fontSize: 14 },
-  scroll: { padding: 20, gap: 12 },
+  scroll: { paddingTop: 20, gap: 12 },
+  teamGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  cardWide: { width: '48%', flexGrow: 1 },
   liveBanner: { borderWidth: 1, borderRadius: 12, padding: 12 },
   liveText: { fontSize: 13, fontWeight: '800' },
   heatmapCard: { borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },

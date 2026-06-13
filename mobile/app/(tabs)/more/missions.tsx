@@ -18,9 +18,11 @@ import {
   type TierId,
 } from '@/lib/gamificationEngine';
 import { missionRulesCopy } from '@/lib/mockData';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { radius, space, tabBarFloatingClearance } from '@/constants/layout';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function tierAccent(id: TierId): string {
@@ -131,11 +133,13 @@ export default function MissionsScreen() {
 
   const top3 = board.length >= 3 ? board.slice(0, 3) : [];
   const tail = board.length > 3 ? board.slice(3) : board.length > 0 && board.length < 3 ? board : [];
+  const { isWide } = useTabletLayout();
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: scrollBottom }]}
-      showsVerticalScrollIndicator={false}>
+    <TabletScrollScreen
+      style={{ backgroundColor: p.background }}
+      padBottom={scrollBottom}
+      contentContainerStyle={styles.root}>
       <Text style={[styles.pageEyebrow, { color: p.textSecondary }]}>Mission Center</Text>
       <Text style={[styles.pageTitle, { color: p.text }]}>Impacto e progresso</Text>
       <Text style={[styles.pageSub, { color: p.textSecondary }]}>
@@ -178,6 +182,7 @@ export default function MissionsScreen() {
       </Surface>
 
       <Text style={[styles.section, { color: p.textSecondary }]}>Missões da semana</Text>
+      <View style={isWide ? styles.missionGrid : undefined}>
       {MISSIONS.map((def) => {
         const st = missionMap.get(def.id);
         const cur = st?.current ?? 0;
@@ -185,7 +190,10 @@ export default function MissionsScreen() {
         const prog = tgt > 0 ? Math.min(1, cur / tgt) : 0;
         const done = st?.completed;
         return (
-          <Surface key={def.id} elevated={!done} style={styles.missionCard}>
+          <Surface
+            key={def.id}
+            elevated={!done}
+            style={isWide ? [styles.missionCard, styles.missionCardWide] : styles.missionCard}>
             <View style={styles.cardTop}>
               <Text style={[styles.cat, { color: p.tint }]}>{categoryLabel(def.category)}</Text>
               {done ? (
@@ -213,6 +221,7 @@ export default function MissionsScreen() {
           </Surface>
         );
       })}
+      </View>
 
       <Text style={[styles.section, { color: p.textSecondary }]}>Ranking</Text>
       <View style={styles.scopeRow}>
@@ -263,17 +272,14 @@ export default function MissionsScreen() {
           ))}
         </Surface>
       )}
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    paddingHorizontal: space.lg,
-    paddingTop: space.lg,
-    gap: space.lg,
-    paddingBottom: space.xl,
-  },
+  root: { gap: space.lg },
+  missionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  missionCardWide: { width: '48%', flexGrow: 1 },
   podiumEyebrow: {
     fontSize: 11,
     fontWeight: '900',

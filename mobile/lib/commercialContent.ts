@@ -162,3 +162,115 @@ export const INTENT_TERM_POINTS = [
   'Sempre valide modelo com jurídico antes de padronizar no app.',
   'Use o assistente “Novo contrato” para capturar dados e depois anexar o PDF assinado no CRM.',
 ] as const;
+
+export const PROSPECTING_SOURCES = [
+  'Rota / agenda',
+  'Indicação',
+  'Prospecção ativa (cold)',
+  'Evento / feira',
+  'Inbound (site / telefone)',
+] as const;
+
+export const ACCEPTANCE_TYPES = [
+  { id: 'verbal', label: 'Aceite verbal (registado em reunião)' },
+  { id: 'email', label: 'Resposta por e-mail' },
+  { id: 'signed_pdf', label: 'Proposta assinada (PDF)' },
+  { id: 'intent_term', label: 'Termo de intenção assinado' },
+] as const;
+
+export const ACCEPTANCE_DOC_CHECKLIST = [
+  { id: 'proposal_pdf', label: 'Proposta comercial assinada ou e-mail de aceite' },
+  { id: 'cnpj_card', label: 'Cartão CNPJ / contrato social' },
+  { id: 'licenses', label: 'Licenças ambientais vigentes' },
+  { id: 'waste_map', label: 'Mapa de resíduos / volumes' },
+  { id: 'billing', label: 'Dados de faturamento (NF, e-mail financeiro)' },
+  { id: 'po', label: 'Pedido de compra (se exigido)' },
+] as const;
+
+export const ACCEPTANCE_EMAIL = `Assunto: RG Ambiental — confirmação de aceite da proposta {PROPOSTA}
+
+Olá, {NOME},
+
+Confirmamos o recebimento do aceite da proposta comercial RG para {EMPRESA}.
+
+• Escopo aceite: {ESCOPO}
+• Investimento acordado: {VALOR}
+• Próximo passo: formalização do contrato e coleta de documentação ({PRAZO})
+
+Anexos a enviar (se ainda não recebidos):
+{DOC_LIST}
+
+Qualquer ajuste, responda neste e-mail ou pelo WhatsApp.
+
+Atenciosamente,
+{CONSULTOR}
+RG Ambiental`;
+
+export const ACCEPTANCE_WHATSAPP = `Olá {NOME}! Confirmamos o aceite da proposta {PROPOSTA} para {EMPRESA}.
+
+Escopo: {ESCOPO}
+Valor: {VALOR}
+
+Próximo passo: contrato formal + documentos até {PRAZO}.
+
+Pode enviar por aqui: {DOC_LIST}`;
+
+export const CONTRACT_KIT_SECTIONS = [
+  {
+    title: '1. Identificação das partes',
+    bullets: [
+      'Razão social, CNPJ, endereço e representante legal do cliente.',
+      'RG Ambiental: CNPJ, endereço e signatário autorizado.',
+    ],
+  },
+  {
+    title: '2. Objeto e escopo',
+    bullets: [
+      'Tipos de resíduo (classe), volumes estimados, frequência de coleta.',
+      'Serviços inclusos: MTR, transporte, destinação, consultoria, treinamentos.',
+      'Exclusões explícitas (evita disputa depois).',
+    ],
+  },
+  {
+    title: '3. Preço e reajuste',
+    bullets: [
+      'Valor mensal ou por tonelada; mínimo faturável.',
+      'Índice de reajuste (IPCA/IGP-M) e periodicidade.',
+      'Custos extras: urgência, hora parada, destinação especial.',
+    ],
+  },
+  {
+    title: '4. SLA e operação',
+    bullets: [
+      'Janelas de coleta, tempo de resposta a chamados.',
+      'Substituição de equipamentos (containers, acondicionamento).',
+      'Canal único de atendimento e escalation.',
+    ],
+  },
+  {
+    title: '5. Conformidade e documentação',
+    bullets: [
+      'Responsabilidade solidária na cadeia — papel de cada parte.',
+      'Entrega de MTR, CDs e relatórios; prazos de arquivo.',
+      'Auditorias e acesso à planta.',
+    ],
+  },
+  {
+    title: '6. Vigência e rescisão',
+    bullets: [
+      'Prazo inicial, renovação automática, aviso prévio.',
+      'Multas e devolução de equipamentos.',
+      'Foro e mediação.',
+    ],
+  },
+] as const;
+
+export const CONTRACT_PRE_SIGN_CHECKLIST = [
+  'Proposta aceita arquivada (PDF ou e-mail)',
+  'CNPJ e IE conferidos com cartão CNPJ',
+  'Escopo técnico validado por operações',
+  'Tabela de preço aprovada pelo comercial',
+  'Cláusulas especiais revisadas pelo jurídico',
+  'Assinatura digital ou física com duas testemunhas (se aplicável)',
+  'Cadastro no ERP / CRM e data de início da coleta',
+] as const;

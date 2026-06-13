@@ -14,20 +14,37 @@ cd C:\dev\RGConsultor
 npm install
 ```
 
-### Mobile (Expo)
+### Desenvolvimento web (recomendado)
+
+Sistema web Vite — sem Expo Go:
 
 ```powershell
-npm run mobile
-# ou: cd mobile && npx expo start
+npm run dev
+# API em :3001 + app em http://localhost:5173
 ```
 
-Copie `mobile/.env.example` para `mobile/.env` se usar API real:
+Ou só o frontend:
+
+```powershell
+npm run consultor
+```
+
+Guia: `apps/consultor/README.md`
+
+Copie `apps/consultor/.env.example` para `apps/consultor/.env` se usar API real:
 
 ```env
-EXPO_PUBLIC_API_MODE=api
-EXPO_PUBLIC_AUTH_MODE=api
-EXPO_PUBLIC_API_BASE_URL=http://SEU_IP:3001
+VITE_API_MODE=api
+VITE_API_BASE_URL=http://localhost:3001
 ```
+
+### Mobile Expo (legado / nativo)
+
+```powershell
+npm run mobile:native
+```
+
+Para GPS, mapa embutido e builds de loja. O fluxo principal de desenvolvimento é o sistema web em `apps/consultor`.
 
 ### API local
 

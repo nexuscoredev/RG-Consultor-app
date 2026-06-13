@@ -1,16 +1,16 @@
-# RG Ambiental — Super App (protótipo)
+# RG Ambiental — Consultor
 
-Monorepo npm workspaces: `packages/shared`, `mobile` (Expo) e `apps/admin` (Vite + mapa executivo).
+Monorepo npm workspaces: `apps/consultor` (sistema web), `apps/api`, `apps/admin`, `packages/shared`, `mobile` (Expo legado).
 
 ```bash
-cd super-app-rg-ambiental
+cd C:\dev\RGConsultor
 npm install
 npm run build --workspace=@rg-ambiental/shared
-npm run start --workspace=mobile
+npm run dev
 ```
 
-- **Primeiro uso:** fluxo `Login` → consentimento LGPD → abas **Início / Agenda / Mais**.
-- **Admin:** `npm run admin` (mapa OSM + KPIs mockados).
-- **Testes:** `npm run test:geo` (Haversine).
-- **Mapas Android:** configure chave Google Maps e plugin `react-native-maps` se os tiles não carregarem.
-- Documentação: `docs/` (inclui `TRAINING.md`, `store-listing-pt-BR.md`).
+- **Sistema web (principal):** `npm run dev` → API `:3001` + app `http://localhost:5173`
+- **Login demo:** `vendedor@rg.com` / `rg2026`
+- **Admin:** `npm run admin` (mapa gestor)
+- **Mobile nativo (legado):** `npm run mobile:native`
+- Documentação: `docs/`, `apps/consultor/README.md`

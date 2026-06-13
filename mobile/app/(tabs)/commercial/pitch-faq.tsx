@@ -5,7 +5,8 @@ import { tabBarFloatingClearance } from '@/constants/layout';
 import { FAQ_ITEMS, PITCH_60S } from '@/lib/commercialContent';
 import { space } from '@/constants/layout';
 import { useState } from 'react';
-import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
+import { TabletScrollScreen } from '@/components/ui/TabletScrollScreen';
+import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -19,7 +20,7 @@ export default function PitchFaqScreen() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <ScrollView contentContainerStyle={[styles.root, { backgroundColor: p.background, paddingBottom: pad }]}>
+    <TabletScrollScreen style={{ backgroundColor: p.background }} padBottom={pad} contentContainerStyle={styles.root}>
       <Surface elevated style={[styles.card, { borderColor: p.border }]}>
         <Text style={[styles.h2, { color: p.tint }]}>Pitch (~60 segundos)</Text>
         <Text style={[styles.body, { color: p.text }]}>{PITCH_60S}</Text>
@@ -44,12 +45,12 @@ export default function PitchFaqScreen() {
           </Surface>
         );
       })}
-    </ScrollView>
+    </TabletScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: space.md, gap: space.sm },
+  root: { gap: space.sm },
   card: { padding: space.md, borderRadius: 16, borderWidth: 1, gap: 8 },
   h2: { fontSize: 16, fontWeight: '900' },
   body: { fontSize: 15, lineHeight: 24 },

@@ -3,10 +3,19 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 
 import { DEMO_USERS, routeForDate } from './seed.js';
-import { getMasterDashboard, listPipeline, recordSyncEvents } from './store.js';
+import { getMasterDashboard, listClientsForSeller, listMgmtAlerts, listPipeline, listSellerAlerts, recordSyncEvents } from './store.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const JWT_SECRET = process.env.JWT_SECRET ?? 'rg-dev-secret-change-in-production';
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+if (IS_PROD && JWT_SECRET === 'rg-dev-secret-change-in-production') {
+  console.error('ERRO: defina JWT_SECRET forte em produção.');
+  process.exit(1);
+}
+if (!IS_PROD && JWT_SECRET === 'rg-dev-secret-change-in-production') {
+  console.warn('AVISO: JWT_SECRET de desenvolvimento — não use em produção.');
+}
 
 type JwtPayload = {
   sub: string;
@@ -98,6 +107,15 @@ app.get('/me/pipeline', authMiddleware, (_req, res) => {
   res.json({ rows: listPipeline() });
 });
 
+app.get('/me/clients', authMiddleware, (req, res) => {
+  const user = (req as express.Request & { user: JwtPayload }).user;
+  res.json({ rows: listClientsForSeller(user.sellerId) });
+});
+
+app.get('/me/alerts', authMiddleware, (_req, res) => {
+  res.json({ items: listSellerAlerts() });
+});
+
 app.post('/sync/events', authMiddleware, (req, res) => {
   const user = (req as express.Request & { user: JwtPayload }).user;
   const events = Array.isArray(req.body?.events) ? req.body.events : [];
@@ -113,6 +131,10 @@ app.post('/sync/events', authMiddleware, (req, res) => {
 
 app.get('/master/dashboard', authMiddleware, masterOnly, (_req, res) => {
   res.json(getMasterDashboard());
+});
+
+app.get('/master/alerts', authMiddleware, masterOnly, (_req, res) => {
+  res.json({ items: listMgmtAlerts() });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

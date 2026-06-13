@@ -1,3 +1,4 @@
+import { afterCommercialEnqueue } from '@/lib/commercialSync';
 import { recordPipelineStep } from '@/lib/gamificationEngine';
 import { syncMeetingLogToPipeline } from '@/lib/localPipelineStore';
 import { enqueueMeetingLog } from '@/lib/outbox';
@@ -16,9 +17,20 @@ function newId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
+export type VisitOutcomeContext = {
+  routeDate: string;
+  stopId: string;
+  company: string;
+  contact?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+};
+
 export async function registerVisitOutcome(
   kind: VisitOutcomeKind,
-  ctx: { routeDate: string; stopId: string; company: string },
+  ctx: VisitOutcomeContext,
+  sync?: { runSyncNow: () => Promise<void>; refreshCounts: () => void },
 ): Promise<void> {
   const meta = OUTCOME_META[kind];
   setNextStep(ctx.routeDate, ctx.stopId, meta.step, meta.note);
@@ -30,6 +42,14 @@ export async function registerVisitOutcome(
     notes: meta.note,
     nextAction: meta.pipelineAction,
     nextDate: '',
+    visit: {
+      routeDate: ctx.routeDate,
+      stopId: ctx.stopId,
+      contact: ctx.contact,
+      address: ctx.address,
+      city: ctx.city,
+      phone: ctx.phone,
+    },
   });
 
   enqueueMeetingLog({
@@ -43,4 +63,6 @@ export async function registerVisitOutcome(
   else if (kind === 'mtr') recordPipelineStep('mtr');
   else if (kind === 'coleta') recordPipelineStep('coleta');
   else recordPipelineStep('outro');
+
+  if (sync) afterCommercialEnqueue(sync);
 }

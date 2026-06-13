@@ -1,0 +1,81 @@
+/* Redmi Pad 2 (~11", 600–1200px) — layout tablet */
+
+@media (min-width: 600px) {
+  .page {
+    gap: var(--space-6);
+  }
+
+  .btn,
+  .chip--button,
+  .app-shell__nav-link {
+    min-height: var(--touch-tablet, 52px);
+  }
+
+  .tool-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .client-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pipeline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .visit-steps {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+  }
+
+  .action-row .btn-link {
+    min-width: 160px;
+  }
+}
+
+@media (min-width: 900px) {
+  .grid-2 {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: var(--space-6);
+  }
+
+  .tool-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .client-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pipeline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .login-page {
+    gap: var(--space-10);
+  }
+
+  .app-shell[data-wide='true'] .app-shell__sidebar {
+    width: 300px;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 767px) {
+  /* Tablet portrait sem sidebar — topbar com logo maior */
+  .app-shell__topbar .rg-logo__img--compact {
+    width: 148px;
+  }
+}
+
+/* Landscape Redmi Pad 2 */
+@media (min-width: 900px) and (orientation: landscape) {
+  .route-map__frame {
+    height: 280px;
+  }
+
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

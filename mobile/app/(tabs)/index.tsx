@@ -1,7 +1,6 @@
 import { HomePullTip } from '@/components/HomePullTip';
 import { CommercialHubCard } from '@/components/home/CommercialHubCard';
 import { HomeHeroGlass } from '@/components/home/HomeHeroGlass';
-import { MissionProgressBar } from '@/components/home/MissionProgressBar';
 import { PipelineSummaryCard } from '@/components/home/PipelineSummaryCard';
 import { RouteDayTimeline } from '@/components/home/RouteDayTimeline';
 import { RgConsultorLogo } from '@/components/RgConsultorLogo';
@@ -10,42 +9,51 @@ import { StopCard } from '@/components/StopCard';
 import { SyncBanner } from '@/components/SyncBanner';
 import { Surface } from '@/components/ui/Surface';
 import { HapticPressable } from '@/components/ui/HapticPressable';
+import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { radius, space } from '@/constants/layout';
 import { typography } from '@/constants/typography';
-import { iconSize } from '@/constants/icons';
 import { useDemoGps } from '@/context/DemoGpsContext';
 import { useGamification } from '@/context/GamificationContext';
 import { useSync } from '@/context/SyncContext';
+import { isApiEnabled } from '@/lib/apiConfig';
 import { fetchRouteDay } from '@/lib/api';
 import { distanceMeters } from '@/lib/geo';
-import { MISSIONS, tierForXp } from '@/lib/gamificationEngine';
+import { MISSIONS } from '@/lib/gamificationEngine';
 import { t } from '@/lib/i18n';
 import {
   addDaysIso,
   getDefaultRouteToday,
-  mockMgmtAlerts,
   routeForDate,
   todayIsoDate,
 } from '@/lib/mockData';
-import { saveRouteToCache } from '@/lib/routesCache';
+import { loadRouteFromCache, saveRouteToCache } from '@/lib/routesCache';
 import { getVisit, type VisitLocal } from '@/lib/visitStore';
 import type { RotaDia } from '@rg-ambiental/shared';
 import { useFocusEffect } from '@react-navigation/native';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Location from 'expo-location';
+import { iconSize } from '@/constants/icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Link, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 
 export default function HomeScreen() {
   const scheme = useColorScheme() ?? 'light';
   const palette = Colors[scheme];
   const { pending, failed } = useSync();
   const { simulateAtClient } = useDemoGps();
-  const { missions: missionRows, wallet } = useGamification();
-  const [route, setRoute] = useState<RotaDia>(() => getDefaultRouteToday());
+  const { missions: missionRows } = useGamification();
+  const [route, setRoute] = useState<RotaDia>(() => {
+    const today = todayIsoDate();
+    const cached = loadRouteFromCache(today);
+    return cached ?? getDefaultRouteToday();
+  });
+  const [routeSource, setRouteSource] = useState<'live' | 'cache' | 'mock' | 'error'>(
+    () => (loadRouteFromCache(todayIsoDate()) ? 'cache' : 'mock'),
+  );
   const [visits, setVisits] = useState<Record<string, VisitLocal | null>>({});
   const [nearClient, setNearClient] = useState(false);
   const tomorrowIso = useMemo(() => addDaysIso(todayIsoDate(), 1), []);
@@ -61,8 +69,6 @@ export default function HomeScreen() {
     [],
   );
 
-  const tier = useMemo(() => tierForXp(wallet.xp), [wallet.xp]);
-
   const reloadVisits = useCallback((r: RotaDia) => {
     try {
       const m: Record<string, VisitLocal | null> = {};
@@ -75,42 +81,65 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const applyRouteFallback = useCallback(
+    (today: string) => {
+      const cached = loadRouteFromCache(today);
+      if (cached) {
+        setRoute(cached);
+        reloadVisits(cached);
+        setRouteSource('cache');
+        return;
+      }
+      if (isApiEnabled()) {
+        setRouteSource('error');
+        return;
+      }
+      const mock = getDefaultRouteToday();
+      setRoute(mock);
+      reloadVisits(mock);
+      setRouteSource('mock');
+    },
+    [reloadVisits],
+  );
+
   const onHomeRefresh = useCallback(async () => {
+    const today = todayIsoDate();
     try {
-      const today = todayIsoDate();
       const fresh = await fetchRouteDay(today);
       saveRouteToCache(fresh);
       setRoute(fresh);
       reloadVisits(fresh);
+      setRouteSource('live');
     } catch {
-      const r = getDefaultRouteToday();
-      setRoute(r);
-      reloadVisits(r);
+      applyRouteFallback(today);
     }
-  }, [reloadVisits]);
+  }, [applyRouteFallback, reloadVisits]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const today = todayIsoDate();
       try {
-        const today = todayIsoDate();
         const fresh = await fetchRouteDay(today);
         if (cancelled) return;
         saveRouteToCache(fresh);
         setRoute(fresh);
         reloadVisits(fresh);
+        setRouteSource('live');
       } catch {
-        if (!cancelled) {
-          const r = getDefaultRouteToday();
-          setRoute(r);
-          reloadVisits(r);
-        }
+        if (!cancelled) applyRouteFallback(today);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [reloadVisits]);
+  }, [applyRouteFallback, reloadVisits]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route?.stops?.length) reloadVisits(route);
+    }, [route, reloadVisits]),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -161,7 +190,7 @@ export default function HomeScreen() {
           return;
         }
         sub = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.Balanced, timeInterval: 22000, distanceInterval: 45 },
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 45_000, distanceInterval: 60 },
           (pos) => tick(pos.coords.latitude, pos.coords.longitude),
         );
         const once = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -180,12 +209,27 @@ export default function HomeScreen() {
   const missionState = missionRows.find((m) => m.missionId === missionDef.id);
   const missionCur = missionState?.current ?? 0;
   const missionTgt = missionState?.target ?? missionDef.target;
-  const progress = missionTgt > 0 ? Math.min(1, missionCur / missionTgt) : 0;
   const H = t('home');
+  const { isWide } = useTabletLayout();
+
+  const settingsAction = (
+    <Link href={'/(tabs)/more/settings' as Href} asChild>
+      <Pressable accessibilityRole="button" accessibilityLabel={H.settingsA11y}>
+        {({ pressed }) => (
+          <MaterialCommunityIcons
+            name="cog-outline"
+            size={iconSize.lg}
+            color={palette.text}
+            style={{ opacity: pressed ? 0.5 : 1 }}
+          />
+        )}
+      </Pressable>
+    </Link>
+  );
 
   if (!next) {
     return (
-      <ScreenChrome title="" subtitle="">
+      <ScreenChrome title={H.title} subtitle={dateLabel} headerRight={settingsAction}>
         <Surface style={{ padding: space.lg }}>
           <RgConsultorLogo variant="home" subtitle={H.emptySubtitle} />
           <Text style={{ color: palette.textSecondary, textAlign: 'center', marginTop: space.md }}>
@@ -198,8 +242,9 @@ export default function HomeScreen() {
 
   return (
     <ScreenChrome
-      title=""
-      subtitle=""
+      title={H.title}
+      subtitle={dateLabel}
+      headerRight={settingsAction}
       onRefresh={onHomeRefresh}
       footer={
         <View style={[styles.footer, { borderTopColor: palette.border, backgroundColor: palette.card }]}>
@@ -208,179 +253,145 @@ export default function HomeScreen() {
           </Text>
         </View>
       }>
-      <HomeHeroGlass dateLabel={dateLabel} />
+      {!isWide ? <HomeHeroGlass dateLabel={dateLabel} /> : null}
 
       <HomePullTip />
 
-      <CommercialHubCard />
-      <PipelineSummaryCard />
-
-      <Text style={[typography.sectionLabel, styles.sectionHeading, { color: palette.textSecondary }]}>
-        {arrivalHighlight ? H.atClientTitle : H.focusVisit}
-      </Text>
-      {arrivalHighlight ? (
-        <Text style={[typography.body, styles.focusHint, { color: palette.textSecondary }]}>{H.atClientBody}</Text>
-      ) : null}
-      <StopCard
-        stop={next}
-        routeDate={route.date}
-        visit={visits[next.id] ?? null}
-        onMutate={() => reloadVisits(route)}
-        highlightArrival={arrivalHighlight}
-      />
-
-      <RouteDayTimeline
-        todayRoute={route}
-        tomorrowRoute={tomorrowRoute}
-        tomorrowIso={tomorrowIso}
-        visitsToday={visits}
-        highlightStopId={arrivalHighlight ? next.id : activeStop?.id}
-      />
-
-      <Surface style={[styles.missionCard, { borderColor: palette.border }]}>
-        <View style={styles.statusHead}>
-          <View style={[styles.iconBadge, { backgroundColor: `${palette.tint}12` }]}>
-            <MaterialCommunityIcons name="target" size={20} color={palette.tint} />
-          </View>
-          <Text style={[typography.eyebrow, styles.statusEyebrow, { color: palette.textSecondary }]}>{H.currentMission}</Text>
-        </View>
-        <Text style={[typography.title, styles.statusTitle, { color: palette.text }]} numberOfLines={2}>
-          {missionDef.title}
-        </Text>
-        <MissionProgressBar progress={progress} trackColor={scheme === 'dark' ? 'rgba(255,255,255,0.12)' : '#e5e7eb'} />
-        <Text style={[typography.caption, styles.statusMeta, { color: palette.textSecondary }]}>
-          {H.missionProgress.replace('{current}', String(missionCur)).replace('{target}', String(missionTgt))}
-        </Text>
-        <Link href={'/(tabs)/more/missions' as Href} asChild>
-          <HapticPressable
-            style={[styles.ctaOutline, { borderColor: palette.tint }]}
-            accessibilityRole="button"
-            accessibilityLabel={H.openMissionCenterA11y}>
-            <Text style={[styles.ctaOutlineText, { color: palette.tint }]}>{H.viewMissions}</Text>
-          </HapticPressable>
-        </Link>
-      </Surface>
-
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <View style={styles.statTop}>
-            <View style={[styles.iconBadgeSm, { backgroundColor: `${palette.tint}10` }]}>
-              <MaterialCommunityIcons name="chart-timeline-variant" size={18} color={palette.tint} />
-            </View>
-            <Text style={[styles.statLabel, { color: palette.textSecondary }]}>{H.xp}</Text>
-          </View>
-          <Text style={[styles.statVal, { color: palette.text }]}>{wallet.xp}</Text>
-          <Text style={[styles.statHint, { color: tier.color }]}>{tier.label}</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <View style={styles.statTop}>
-            <View style={[styles.iconBadgeSm, { backgroundColor: `${palette.tint}10` }]}>
-              <MaterialCommunityIcons name="circle-multiple-outline" size={18} color={palette.tint} />
-            </View>
-            <Text style={[styles.statLabel, { color: palette.textSecondary }]}>{H.coins}</Text>
-          </View>
-          <Text style={[styles.statVal, { color: palette.text }]}>{wallet.coins}</Text>
-          <Link href={'/(tabs)/more/store' as Href} asChild>
-            <HapticPressable
-              style={[styles.ctaSolidSm, { backgroundColor: palette.tint }]}
-              accessibilityRole="button"
-              accessibilityLabel={H.openStoreA11y}>
-              <Text style={styles.ctaSolidTextSm}>{H.goStore}</Text>
-            </HapticPressable>
-          </Link>
-        </View>
-      </View>
-
-      <SyncBanner />
-
-      <Text style={[typography.sectionLabel, styles.sectionHeading, { color: palette.textSecondary }]}>{H.management}</Text>
-      {mockMgmtAlerts.map((a) => (
-        <Surface
-          key={a.id}
-          style={{
-            borderColor: a.severity === 'danger' ? palette.danger : palette.border,
-            padding: space.md,
-            gap: space.sm,
-          }}>
-          <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={iconSize.sm}
-              color={a.severity === 'danger' ? palette.danger : palette.tint}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={[typography.title, styles.alertTitle, { color: a.severity === 'danger' ? palette.danger : palette.text }]}>
-                {a.title}
-              </Text>
-              <Text style={[typography.body, styles.alertBody, { color: palette.textSecondary }]}>{a.body}</Text>
-            </View>
-          </View>
+      {routeSource === 'cache' ? (
+        <Surface style={[styles.routeBanner, { borderColor: palette.tint, backgroundColor: `${palette.tint}12` }]}>
+          <Text style={[typography.captionBold, { color: palette.tint }]}>{H.routeCacheBanner}</Text>
         </Surface>
-      ))}
+      ) : null}
+      {routeSource === 'error' ? (
+        <Surface style={[styles.routeBanner, { borderColor: palette.danger, backgroundColor: `${palette.danger}14` }]}>
+          <Text style={[typography.captionBold, { color: palette.danger }]}>{H.routeErrorBanner}</Text>
+          <SecondaryButton
+            label={H.retryRoute}
+            tint
+            fullWidth
+            onPress={() => void onHomeRefresh()}
+            accessibilityLabel={H.retryRoute}
+          />
+        </Surface>
+      ) : null}
 
-      <Link href={'/(tabs)/more/operation' as Href} asChild>
-        <HapticPressable
-          style={({ pressed }: PressableStateCallbackType) => [
-            styles.ctaBanner,
-            { backgroundColor: palette.forestDeep, opacity: pressed ? 0.92 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={H.openShowroomA11y}>
-          <MaterialCommunityIcons name="play-circle-outline" size={24} color="#fff" />
-          <Text style={styles.ctaText}>{H.operationCta}</Text>
-          <MaterialCommunityIcons name="chevron-right" size={iconSize.md} color="#fff" />
-        </HapticPressable>
-      </Link>
+      {isWide ? (
+        <View style={styles.wideRow}>
+          <View style={styles.widePrimary}>
+            <Text style={[typography.sectionLabel, styles.sectionHeading, { color: palette.textSecondary }]}>
+              {arrivalHighlight ? H.atClientTitle : H.focusVisit}
+            </Text>
+            {arrivalHighlight ? (
+              <Text style={[typography.body, styles.focusHint, { color: palette.textSecondary }]}>{H.atClientBody}</Text>
+            ) : null}
+            <StopCard
+              stop={next}
+              routeDate={route.date}
+              visit={visits[next.id] ?? null}
+              onMutate={() => reloadVisits(route)}
+              highlightArrival={arrivalHighlight}
+            />
+            <RouteDayTimeline
+              todayRoute={route}
+              tomorrowRoute={tomorrowRoute}
+              tomorrowIso={tomorrowIso}
+              visitsToday={visits}
+              highlightStopId={arrivalHighlight ? next.id : activeStop?.id}
+            />
+            <Link href={'/(tabs)/agenda' as Href} asChild>
+              <SecondaryButton
+                label={H.openFullAgenda}
+                tint
+                fullWidth
+                accessibilityLabel={H.openFullAgendaA11y}
+              />
+            </Link>
+          </View>
+          <View style={styles.wideAside}>
+            <PipelineSummaryCard />
+            <CommercialHubCard />
+            <Surface style={[styles.missionCompact, { borderColor: palette.border }]}>
+              <Text style={[typography.caption, { color: palette.textSecondary }]}>{H.currentMission}</Text>
+              <Text style={[typography.title, { color: palette.text }]} numberOfLines={1}>
+                {missionDef.title}
+              </Text>
+              <Text style={[typography.caption, { color: palette.textSecondary }]}>
+                {H.missionProgress.replace('{current}', String(missionCur)).replace('{target}', String(missionTgt))}
+              </Text>
+              <Link href={'/(tabs)/more/missions' as Href} asChild>
+                <HapticPressable
+                  style={[styles.ctaOutline, { borderColor: palette.tint }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={H.openMissionCenterA11y}>
+                  <Text style={[styles.ctaOutlineText, { color: palette.tint }]}>{H.viewMissions}</Text>
+                </HapticPressable>
+              </Link>
+            </Surface>
+            {pending > 0 || failed > 0 ? <SyncBanner /> : null}
+          </View>
+        </View>
+      ) : (
+        <>
+          <Text style={[typography.sectionLabel, styles.sectionHeading, { color: palette.textSecondary }]}>
+            {arrivalHighlight ? H.atClientTitle : H.focusVisit}
+          </Text>
+          {arrivalHighlight ? (
+            <Text style={[typography.body, styles.focusHint, { color: palette.textSecondary }]}>{H.atClientBody}</Text>
+          ) : null}
+          <StopCard
+            stop={next}
+            routeDate={route.date}
+            visit={visits[next.id] ?? null}
+            onMutate={() => reloadVisits(route)}
+            highlightArrival={arrivalHighlight}
+          />
+          <RouteDayTimeline
+            todayRoute={route}
+            tomorrowRoute={tomorrowRoute}
+            tomorrowIso={tomorrowIso}
+            visitsToday={visits}
+            highlightStopId={arrivalHighlight ? next.id : activeStop?.id}
+          />
+          <Link href={'/(tabs)/agenda' as Href} asChild>
+            <SecondaryButton
+              label={H.openFullAgenda}
+              tint
+              fullWidth
+              accessibilityLabel={H.openFullAgendaA11y}
+            />
+          </Link>
+          <PipelineSummaryCard />
+          <CommercialHubCard />
+          <Surface style={[styles.missionCompact, { borderColor: palette.border }]}>
+            <Text style={[typography.caption, { color: palette.textSecondary }]}>{H.currentMission}</Text>
+            <Text style={[typography.title, { color: palette.text }]} numberOfLines={1}>
+              {missionDef.title}
+            </Text>
+            <Text style={[typography.caption, { color: palette.textSecondary }]}>
+              {H.missionProgress.replace('{current}', String(missionCur)).replace('{target}', String(missionTgt))}
+            </Text>
+            <Link href={'/(tabs)/more/missions' as Href} asChild>
+              <HapticPressable
+                style={[styles.ctaOutline, { borderColor: palette.tint }]}
+                accessibilityRole="button"
+                accessibilityLabel={H.openMissionCenterA11y}>
+                <Text style={[styles.ctaOutlineText, { color: palette.tint }]}>{H.viewMissions}</Text>
+              </HapticPressable>
+            </Link>
+          </Surface>
+          {pending > 0 || failed > 0 ? <SyncBanner /> : null}
+        </>
+      )}
     </ScreenChrome>
   );
 }
 
 const styles = StyleSheet.create({
-  missionCard: { gap: 10, padding: space.md, shadowOpacity: 0, elevation: 0 },
+  routeBanner: { padding: space.sm, borderRadius: radius.md, borderWidth: 1, gap: space.sm },
+  missionCompact: { gap: 6, padding: space.md, shadowOpacity: 0, elevation: 0 },
   sectionHeading: { marginTop: 4, marginBottom: 2 },
   focusHint: { marginTop: -4, marginBottom: 2 },
-  statusHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusEyebrow: { flex: 1 },
-  statusTitle: { letterSpacing: -0.3, lineHeight: 22 },
-  statusMeta: {},
   ctaOutlineText: { ...typography.buttonSm },
-  statsRow: { flexDirection: 'row', gap: space.md },
-  statCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    padding: space.md,
-    gap: 6,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  statTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBadgeSm: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: { ...typography.eyebrow, flex: 1, letterSpacing: 0.8 },
-  statVal: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  statHint: { ...typography.captionBold },
-  ctaSolidSm: {
-    marginTop: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    minHeight: 40,
-  },
-  ctaSolidTextSm: { color: '#fff', ...typography.buttonSm },
   ctaOutline: {
     marginTop: 4,
     alignItems: 'center',
@@ -391,17 +402,13 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     minHeight: 48,
   },
-  alertTitle: {},
-  alertBody: { marginTop: 4 },
-  ctaBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 18,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.lg,
-  },
-  ctaText: { flex: 1, color: '#fff', ...typography.button },
   footer: { padding: space.md, borderTopWidth: StyleSheet.hairlineWidth },
   footerText: { ...typography.caption, textAlign: 'center' },
+  wideRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.lg,
+  },
+  widePrimary: { flex: 1.15, gap: space.md, minWidth: 0 },
+  wideAside: { flex: 0.85, gap: space.md, minWidth: 280 },
 });

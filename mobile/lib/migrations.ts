@@ -6,6 +6,11 @@ import type * as SQLite from 'expo-sqlite';
  */
 export function runSqliteMigrations(db: SQLite.SQLiteDatabase): void {
   try {
+    db.execSync('ALTER TABLE outbox ADD COLUMN last_error TEXT');
+  } catch {
+    /* coluna já existe */
+  }
+  try {
     db.execSync('ALTER TABLE outbox ADD COLUMN next_attempt_at INTEGER NOT NULL DEFAULT 0');
   } catch {
     /* coluna já existe */

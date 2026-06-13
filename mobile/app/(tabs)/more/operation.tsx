@@ -1,7 +1,9 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { HapticPressable } from '@/components/ui/HapticPressable';
+import { TabletContent } from '@/components/ui/TabletContent';
 import { radius, space } from '@/constants/layout';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { SHOWROOM_HLS_URI, SHOWROOM_MP4_FALLBACK, SHOWROOM_POSTER_URI, showroomChapters } from '@/lib/mockData';
 import { ResizeMode, Video, type AVPlaybackStatus } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -18,6 +20,7 @@ export default function OperationScreen() {
   const [preferHls, setPreferHls] = useState(false);
   const videoUri = preferHls ? SHOWROOM_HLS_URI : SHOWROOM_MP4_FALLBACK;
   const [storyIndex, setStoryIndex] = useState(0);
+  const { horizontalPadding, isTablet } = useTabletLayout();
 
   useEffect(() => {
     if (!presentation) return;
@@ -110,60 +113,83 @@ export default function OperationScreen() {
         },
       ]}>
       {!presentation ? (
+        <TabletContent style={{ paddingHorizontal: horizontalPadding }}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: palette.text }]}>Nossa Operação</Text>
           <Text style={[styles.sub, { color: palette.textSecondary }]}>
             Stories para saltar entre trechos — modo trailer em tela cheia para apresentar ao cliente.
           </Text>
         </View>
+        {storyCircles}
+        </TabletContent>
       ) : null}
 
-      {!presentation ? storyCircles : null}
-
       <View style={[styles.body, presentation && styles.bodyPresentation]}>
-        <View style={presentation ? styles.videoWrapPresentation : styles.videoWrap}>
-          <Video
-            key={videoUri}
-            ref={video}
-            style={presentation ? styles.videoPresentation : styles.video}
-            source={{ uri: videoUri }}
-            posterSource={{ uri: SHOWROOM_POSTER_URI }}
-            usePoster={!presentation}
-            useNativeControls={!presentation}
-            resizeMode={presentation ? ResizeMode.COVER : ResizeMode.CONTAIN}
-            isLooping
-            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-          />
-          {presentation ? (
-            <View
-              pointerEvents="box-none"
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  paddingTop: insets.top + space.sm,
-                  paddingBottom: insets.bottom + space.md,
-                  paddingHorizontal: space.md,
-                  justifyContent: 'space-between',
-                },
-              ]}>
-              <View style={styles.cineTopRow}>
-                <Text style={styles.cineTag}>RG Ambiental · vitrine</Text>
-                <HapticPressable
-                  onPress={() => setPresentation(false)}
-                  style={[styles.cineExit, { borderColor: 'rgba(255,255,255,0.4)' }]}
-                  accessibilityLabel="Sair do modo trailer">
-                  <Text style={styles.cineExitText}>Sair</Text>
-                </HapticPressable>
+        <View
+          style={[
+            presentation ? styles.videoWrapPresentation : styles.videoWrap,
+            !presentation && { paddingHorizontal: horizontalPadding },
+          ]}>
+          {!presentation ? (
+            <TabletContent>
+              <Video
+                key={videoUri}
+                ref={video}
+                style={[styles.video, isTablet && styles.videoTablet]}
+                source={{ uri: videoUri }}
+                posterSource={{ uri: SHOWROOM_POSTER_URI }}
+                usePoster
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                isLooping
+                onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+              />
+            </TabletContent>
+          ) : (
+            <>
+              <Video
+                key={videoUri}
+                ref={video}
+                style={styles.videoPresentation}
+                source={{ uri: videoUri }}
+                posterSource={{ uri: SHOWROOM_POSTER_URI }}
+                usePoster={false}
+                useNativeControls={false}
+                resizeMode={ResizeMode.COVER}
+                isLooping
+                onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+              />
+              <View
+                pointerEvents="box-none"
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    paddingTop: insets.top + space.sm,
+                    paddingBottom: insets.bottom + space.md,
+                    paddingHorizontal: space.md,
+                    justifyContent: 'space-between',
+                  },
+                ]}>
+                <View style={styles.cineTopRow}>
+                  <Text style={styles.cineTag}>RG Ambiental · vitrine</Text>
+                  <HapticPressable
+                    onPress={() => setPresentation(false)}
+                    style={[styles.cineExit, { borderColor: 'rgba(255,255,255,0.4)' }]}
+                    accessibilityLabel="Sair do modo trailer">
+                    <Text style={styles.cineExitText}>Sair</Text>
+                  </HapticPressable>
+                </View>
+                <View style={{ flex: 1 }} />
+                {cinematicChapters}
               </View>
-              <View style={{ flex: 1 }} />
-              {cinematicChapters}
-            </View>
-          ) : null}
+            </>
+          )}
         </View>
       </View>
 
       {!presentation ? (
-        <View style={[styles.dots, { paddingHorizontal: space.lg }]}>
+        <TabletContent style={{ paddingHorizontal: horizontalPadding }}>
+        <View style={styles.dots}>
           {showroomChapters.map((c, i) => (
             <HapticPressable key={c.id} onPress={() => void seek(c.seconds, i)} style={styles.dotHit}>
               <View
@@ -175,8 +201,10 @@ export default function OperationScreen() {
             </HapticPressable>
           ))}
         </View>
+        </TabletContent>
       ) : null}
 
+      <TabletContent style={{ paddingHorizontal: horizontalPadding }}>
       <View style={[styles.toolbar, { borderTopColor: palette.border, backgroundColor: palette.card }]}>
         <Text style={[styles.toolLabel, { color: palette.text }]}>Stream HLS (teste)</Text>
         <Switch
@@ -190,6 +218,7 @@ export default function OperationScreen() {
         <Text style={[styles.toolLabel, { color: palette.text }]}>Modo trailer (tela cheia)</Text>
         <Switch value={presentation} onValueChange={setPresentation} accessibilityLabel="Alternar modo trailer cinematográfico" />
       </View>
+      </TabletContent>
     </View>
   );
 }
@@ -234,6 +263,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#0f1a15',
   },
+  videoTablet: { maxHeight: 420 },
   videoPresentation: { flex: 1, width: '100%', minHeight: 320, backgroundColor: '#0a1812' },
   dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingBottom: space.sm },
   dotHit: { paddingVertical: 6, paddingHorizontal: 4 },

@@ -1,4 +1,8 @@
 import { getApiBaseUrl, isApiEnabled } from '@/lib/apiConfig';
+import { friendlyApiMessage } from '@/lib/apiErrors';
+import { notifyUnauthorized } from '@/lib/sessionAuth';
+
+const DEFAULT_TIMEOUT_MS = 25_000;
 
 export class ApiError extends Error {
   constructor(
@@ -29,16 +33,37 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(url, {
-    method: opts.method ?? 'GET',
-    headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-    signal: opts.signal,
-  });
+  const controller = new AbortController();
+  const timeout = opts.signal
+    ? null
+    : setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const signal = opts.signal ?? controller.signal;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: opts.method ?? 'GET',
+      headers,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new ApiError('Tempo esgotado ao contactar o servidor.', 0);
+    }
+    throw e;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new ApiError(text || `HTTP ${res.status}`, res.status);
+    if (res.status === 401) {
+      if (!path.includes('/auth/login')) {
+        void notifyUnauthorized();
+      }
+    }
+    throw new ApiError(friendlyApiMessage(res.status, text, path), res.status);
   }
 
   if (res.status === 204) return undefined as T;

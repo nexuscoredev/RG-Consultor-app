@@ -1,9 +1,13 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useTabletLayout } from '@/hooks/useTabletLayout';
 import { space } from '@/constants/layout';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+
+/** Logotipo RG Ambiental (fundo removido) */
+const rgAmbientalWordmark = require('../assets/images/rg-ambiental-logo.png');
 
 type Props = {
   subtitle?: string;
@@ -12,45 +16,34 @@ type Props = {
 };
 
 /**
- * Logotipo RG Consultor — monograma em gradiente + tipografia; sem PNG.
+ * Marca RG — home usa logotipo RG Ambiental (PNG); demais variantes mantêm monograma.
  */
 export function RgConsultorLogo({ subtitle = 'Campo comercial inteligente', variant = 'compact' }: Props) {
   const scheme = useColorScheme() ?? 'light';
   const p = Colors[scheme];
+  const { width: screenW } = useWindowDimensions();
+  const { isTablet } = useTabletLayout();
   const hero = variant === 'hero';
   const home = variant === 'home';
-  const box = home ? 80 : hero ? 68 : 54;
-  const consultorSize = home ? 30 : hero ? 34 : 27;
-  const rgMonoSize = home ? 26 : hero ? 22 : 17;
+  const box = hero ? 68 : 54;
+  const consultorSize = hero ? 34 : 27;
+  const rgMonoSize = hero ? 22 : 17;
   const gradId = useMemo(() => `rgMonoGrad-${variant}-${box}`, [variant, box]);
+
+  /** Proporção real do wordmark (1024×152) */
+  const ambientalAspect = 152 / 1024;
+  const ambientalLogoW = Math.min(screenW - space.md * 4, isTablet ? 420 : 320);
+  const ambientalLogoH = Math.max(40, Math.round(ambientalLogoW * ambientalAspect));
 
   if (home) {
     return (
-      <View style={styles.homeWrap} accessibilityRole="header" accessibilityLabel="RG Consultor">
-        <View style={[styles.homeMono, { width: box, height: box, borderRadius: 22 }]}>
-          <View style={styles.svgFill}>
-            <Svg width={box} height={box}>
-            <Defs>
-              <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={p.tint} />
-                <Stop offset="0.55" stopColor="#10b981" />
-                <Stop offset="1" stopColor={p.lime} />
-              </LinearGradient>
-            </Defs>
-            <Rect x={0} y={0} width={box} height={box} rx={20} fill={`url(#${gradId})`} />
-            <Circle cx={box * 0.78} cy={box * 0.22} r={box * 0.08} fill="rgba(255,255,255,0.22)" />
-          </Svg>
-          </View>
-          <View style={styles.monoCenter} pointerEvents="none">
-            <Text style={[styles.monoLetters, { fontSize: rgMonoSize }]}>RG</Text>
-          </View>
-        </View>
-
-        <Text style={styles.homeWordmark} accessibilityRole="text">
-          <Text style={[styles.homeRg, { color: p.tint }]}>RG </Text>
-          <Text style={[styles.homeConsultor, { color: p.text }]}>Consultor</Text>
-        </Text>
-        <View style={[styles.homeBar, { backgroundColor: p.lime }]} />
+      <View style={styles.homeWrap} accessibilityRole="header" accessibilityLabel="RG Ambiental">
+        <Image
+          source={rgAmbientalWordmark}
+          style={{ width: ambientalLogoW, height: ambientalLogoH }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
         {subtitle ? (
           <Text style={[styles.homeSub, { color: p.textSecondary }]} numberOfLines={2}>
             {subtitle}
@@ -66,14 +59,14 @@ export function RgConsultorLogo({ subtitle = 'Campo comercial inteligente', vari
         <View style={[styles.monoOuter, { width: box, height: box, borderRadius: hero ? 20 : 16 }]}>
           <View style={styles.svgFill}>
             <Svg width={box} height={box}>
-            <Defs>
-              <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={p.tint} />
-                <Stop offset="1" stopColor={p.lime} />
-              </LinearGradient>
-            </Defs>
-            <Rect x={0} y={0} width={box} height={box} rx={hero ? 18 : 14} fill={`url(#${gradId})`} />
-          </Svg>
+              <Defs>
+                <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={p.tint} />
+                  <Stop offset="1" stopColor={p.lime} />
+                </LinearGradient>
+              </Defs>
+              <Rect x={0} y={0} width={box} height={box} rx={hero ? 18 : 14} fill={`url(#${gradId})`} />
+            </Svg>
           </View>
           <View style={styles.monoCenter} pointerEvents="none">
             <Text style={[styles.monoLetters, { fontSize: rgMonoSize }]}>RG</Text>
@@ -126,22 +119,15 @@ const styles = StyleSheet.create({
   homeWrap: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    paddingVertical: space.lg,
+    paddingTop: space.sm,
+    paddingBottom: space.xs,
     gap: space.md,
   },
-  homeMono: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: '#065f46',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+  homeSub: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    fontWeight: '500',
+    maxWidth: 320,
   },
-  homeWordmark: { textAlign: 'center', marginTop: 4 },
-  homeRg: { fontSize: 36, fontWeight: '900', letterSpacing: -1.2 },
-  homeConsultor: { fontSize: 36, fontWeight: '900', letterSpacing: -1 },
-  homeBar: { width: 64, height: 4, borderRadius: 2, marginTop: 4 },
-  homeSub: { fontSize: 15, lineHeight: 22, textAlign: 'center', fontWeight: '500', maxWidth: 320, marginTop: 6 },
 });
