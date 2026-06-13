@@ -63,8 +63,8 @@
 
 @media (min-width: 600px) and (max-width: 767px) {
   /* Tablet portrait sem sidebar — topbar com logo maior */
-  .app-shell__topbar .rg-logo__img--compact {
-    width: 148px;
+  .app-shell__topbar .rg-mark--sm {
+    font-size: 1.85rem;
   }
 }
 

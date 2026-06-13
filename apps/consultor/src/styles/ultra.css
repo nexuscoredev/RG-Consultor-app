@@ -1,4 +1,4 @@
-/* Ultra polish — logo hero, depth, Apple-grade refinement */
+/* Ultra polish — RG mark, depth, Apple-grade refinement */
 
 :root {
   --touch-tablet: 52px;
@@ -11,49 +11,10 @@
   --logo-glow-soft: rgba(52, 211, 153, 0.18);
 }
 
-/* ——— Logo mark ——— */
-.rg-logo__mark {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rg-logo__glow {
-  position: absolute;
-  inset: -12%;
-  border-radius: 24px;
-  background: radial-gradient(ellipse at center, var(--logo-glow-soft) 0%, transparent 70%);
-  filter: blur(8px);
-  z-index: 0;
-}
-
-.rg-logo__mark img {
-  position: relative;
-  z-index: 1;
-}
-
-.rg-logo__img--hero {
-  width: min(420px, 88vw);
-  height: auto;
-  filter: drop-shadow(0 12px 32px rgba(4, 120, 87, 0.22));
-}
-
-.rg-logo__img--wordmark {
-  width: min(320px, 78vw);
-}
-
-.rg-logo__img--compact {
-  width: 132px;
-}
-
-.rg-logo__img--sidebar {
-  width: 100%;
-  max-width: 260px;
-}
-
-.rg-logo--shell .rg-logo__img--sidebar {
-  max-width: 280px;
+.rg-mark--md,
+.rg-mark--lg,
+.rg-mark--xl {
+  filter: drop-shadow(0 8px 20px var(--logo-glow-soft));
 }
 
 .rg-logo--hero {
@@ -70,9 +31,8 @@
   margin-top: var(--space-2);
 }
 
-/* ——— Login hero ——— */
 .login-page__brand .rg-logo--hero {
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
 }
 
 .login-page__brand-title {
@@ -96,11 +56,6 @@
     0 0 80px rgba(16, 185, 129, 0.06);
 }
 
-.login-page__brand .rg-logo__img--hero {
-  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.22));
-}
-
-/* ——— Sidebar brand block ——— */
 .app-shell__sidebar .rg-logo--sidebar {
   padding-bottom: var(--space-5);
   margin-bottom: var(--space-4);
@@ -110,7 +65,6 @@
   padding: var(--space-4);
 }
 
-/* ——— Cards & depth ——— */
 .card,
 .ios-group,
 .kpi-strip__item {
@@ -130,7 +84,6 @@
     0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* ——— Page header refinement ——— */
 .page-header__title {
   font-size: clamp(1.75rem, 2.5vw, 2.25rem);
 }
@@ -142,7 +95,6 @@
   border: 0.5px solid var(--separator);
 }
 
-/* ——— Nav sidebar ——— */
 .app-shell__nav-link {
   font-weight: 600;
   border-radius: 12px;
@@ -153,15 +105,9 @@
   box-shadow: none;
 }
 
-/* ——— Stat / pipeline cards ——— */
 .stat-card,
 .pipeline-card {
   border-radius: 16px;
-}
-
-/* ——— Install page ——— */
-.settings-hero-logo .rg-logo__img--hero {
-  width: min(280px, 100%);
 }
 
 .settings-brand-card {
@@ -173,10 +119,12 @@
   margin-bottom: var(--space-4);
 }
 
-.login-card__logo .rg-logo__img--compact {
-  width: 160px;
-}
-
 .install-page .rg-logo--hero {
   margin: 0 auto var(--space-6);
+}
+
+[data-theme='dark'] .tool-link:hover,
+[data-theme='dark'] .funnel-stepper__item:hover {
+  background: var(--card-hover);
+  color: var(--forest);
 }

@@ -4,9 +4,16 @@ import { Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { RgLogo } from '@/components/RgLogo';
+import { RgMark } from '@/components/RgMark';
 import { useAuth } from '@/context/AuthContext';
 import { authHint } from '@/lib/auth';
 import { getApiBaseUrl, isApiEnabled } from '@/lib/apiConfig';
+
+const BRAND_FEATURES = [
+  'Rota do dia e paradas no mapa',
+  'Kit comercial em 4 fases',
+  'Propostas e pipeline sincronizados',
+] as const;
 
 export function LoginPage() {
   const { signIn, token, loading } = useAuth();
@@ -32,20 +39,28 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <section className="login-page__brand" aria-label="RG Ambiental Consultor">
+      <section className="login-page__brand" aria-label="RG consultor">
+        <div className="login-page__brand-glow login-page__brand-glow--one" aria-hidden />
+        <div className="login-page__brand-glow login-page__brand-glow--two" aria-hidden />
+
         <div className="login-page__brand-inner">
-          <span className="login-page__eyebrow">Consultor de campo</span>
-          <RgLogo variant="hero" subtitle="Gestão de visitas e ciclo comercial" />
+          <div className="login-brand-lockup">
+            <RgMark size="xl" tone="light" className="login-brand-lockup__rg" />
+            <span className="login-brand-lockup__name">consultor</span>
+            <p className="login-brand-lockup__tagline">Gestão de visitas e ciclo comercial</p>
+          </div>
+
           <div className="login-page__brand-copy-block">
             <h1 className="login-page__brand-title">Consultoria de campo, com método.</h1>
             <p className="login-page__brand-copy">
-              Agenda, funil comercial, propostas e pipeline — otimizado para tablet e celular no navegador.
+              Agenda, funil comercial, propostas e pipeline — otimizado para tablet e celular.
             </p>
           </div>
+
           <ul className="login-page__brand-list">
-            <li>Rota do dia e paradas no mapa</li>
-            <li>Kit comercial em 4 fases</li>
-            <li>Propostas e pipeline sincronizados</li>
+            {BRAND_FEATURES.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
         </div>
       </section>
@@ -53,7 +68,10 @@ export function LoginPage() {
       <div className="login-page__form-wrap">
         <div className="login-page__form-inner">
           <header className="login-page__mobile-brand">
-            <RgLogo variant="wordmark" subtitle="Consultor de campo" />
+            <div className="login-brand-lockup login-brand-lockup--compact">
+              <RgMark size="lg" tone="brand" className="login-brand-lockup__rg" />
+              <span className="login-brand-lockup__name">consultor</span>
+            </div>
           </header>
 
           <Card elevated className="login-card glass-panel">

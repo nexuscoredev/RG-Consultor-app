@@ -10,17 +10,21 @@
 }
 
 [data-theme='dark'] {
-  --bg: #000000;
-  --bg-elevated: #1c1c1e;
-  --card: #1c1c1e;
-  --card-hover: #2c2c2e;
-  --grouped-bg: #1c1c1e;
-  --separator: rgba(84, 84, 88, 0.65);
-  --glass: rgba(28, 28, 30, 0.82);
-  --gradient-mesh: none;
-  --bottom-nav-bg: rgba(28, 28, 30, 0.88);
-  --topbar-bg: rgba(28, 28, 30, 0.88);
-  --sidebar-bg: rgba(28, 28, 30, 0.95);
+  --bg: #0b1210;
+  --bg-elevated: #141f1b;
+  --card: #141f1b;
+  --card-hover: #1a2823;
+  --grouped-bg: #141f1b;
+  --surface-muted: #111a17;
+  --surface-accent: rgba(16, 185, 129, 0.1);
+  --separator: rgba(84, 84, 88, 0.45);
+  --glass: rgba(20, 31, 27, 0.82);
+  --gradient-mesh:
+    radial-gradient(ellipse 70% 50% at 100% -5%, rgba(16, 185, 129, 0.08), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 0% 0%, rgba(4, 120, 87, 0.06), transparent 50%);
+  --bottom-nav-bg: rgba(20, 31, 27, 0.92);
+  --topbar-bg: rgba(20, 31, 27, 0.92);
+  --sidebar-bg: rgba(17, 26, 23, 0.95);
   --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
   --warn: #ff9f0a;
 }
@@ -115,6 +119,11 @@
 
 [data-theme='light'] .card {
   background: var(--grouped-bg);
+}
+
+[data-theme='dark'] .card {
+  background: var(--grouped-bg);
+  border-color: var(--border);
 }
 
 .ios-section {
