@@ -11,7 +11,8 @@ export function RgMark({ size = 'md', tone = 'brand', className = '' }: Props) {
     <span
       className={`rg-mark rg-mark--${size} rg-mark--${tone}${className ? ` ${className}` : ''}`.trim()}
       aria-hidden>
-      RG
+      <span className="rg-mark__r">R</span>
+      <span className="rg-mark__g">g</span>
     </span>
   );
 }

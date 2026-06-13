@@ -45,7 +45,7 @@ export function LoginPage() {
 
         <div className="login-page__brand-inner">
           <div className="login-brand-lockup">
-            <RgMark size="xl" tone="light" className="login-brand-lockup__rg" />
+            <RgMark size="xl" tone="brand" className="login-brand-lockup__rg" />
             <span className="login-brand-lockup__name">consultor</span>
             <p className="login-brand-lockup__tagline">Gestão de visitas e ciclo comercial</p>
           </div>

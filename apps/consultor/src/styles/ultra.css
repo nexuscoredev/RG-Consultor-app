@@ -14,7 +14,7 @@
 .rg-mark--md,
 .rg-mark--lg,
 .rg-mark--xl {
-  filter: drop-shadow(0 8px 20px var(--logo-glow-soft));
+  filter: drop-shadow(0 0 18px rgba(16, 185, 129, 0.22));
 }
 
 .rg-logo--hero {
